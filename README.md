@@ -88,3 +88,13 @@ My contribution included:
 ## Project Report
 
 The complete official academic project report is available in the `project-report` folder.
+## How to Run the Project
+
+1. Install dependencies  
+   pip install -r requirements.txt
+
+2. Run the application  
+   python app.py
+
+3. (Optional) Open the notebook  
+   jupyter notebook
