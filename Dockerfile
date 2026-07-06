@@ -5,14 +5,20 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /app
+# Set up non-root user 1000 (default Hugging Face Spaces user)
+RUN useradd -m -u 1000 user
+USER user
+ENV HOME=/home/user \
+    PATH=/home/user/.local/bin:$PATH
 
-# Copy requirements and install
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+WORKDIR $HOME/app
 
-# Copy all project files
-COPY . .
+# Copy requirements and install dependencies locally to user home
+COPY --chown=user requirements.txt .
+RUN pip install --no-cache-dir --user -r requirements.txt
+
+# Copy all project files and set ownership to user 1000
+COPY --chown=user . .
 
 # Set dynamic port environment variable for Hugging Face Spaces (default: 7860)
 ENV PORT=7860
