@@ -1,3 +1,13 @@
+---
+title: PredictMedix
+emoji: 🏥
+colorFrom: blue
+colorTo: green
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # PREDICTMEDIX – Medical Cost Prediction & Explainable AI Portal
 ### Final Year B.Tech Major Project | Computer Science and Engineering
 
