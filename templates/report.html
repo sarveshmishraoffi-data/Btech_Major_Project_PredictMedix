@@ -1,0 +1,1692 @@
+{% extends "pdf_base.html" if is_pdf else "base.html" %}
+
+{% block content %}
+{% if is_pdf %}
+  <!-- PDF Version (Optimized for xhtml2pdf printing) -->
+  {% set tips = health_tips_json | fromjson if health_tips_json else [] %}
+  {% set exps = explanations_json | fromjson if explanations_json else [] %}
+  {% set futures = future_predictions_json | fromjson if future_predictions_json else [] %}
+  {% set plans = insurance_plans_json | fromjson if insurance_plans_json else [] %}
+
+  <div class="header">
+    <table>
+      <tr>
+        <td class="brand">PredictMedix</td>
+        <td class="report-title">Medical Cost Prediction Report</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="cost-card">
+    <div class="label" style="text-transform: uppercase; font-size: 9pt; letter-spacing: 1px;">Estimated Annual Medical Charges</div>
+    <div class="cost-value">₹{{ cost }} <span style="font-size: 10pt; color: #4A5568; font-weight: normal;">(INR)</span></div>
+  </div>
+
+  <div class="section-title">Patient Profile Information</div>
+  <table class="grid-table">
+    <tr>
+      <td width="33%"><span class="label">Patient Name:</span> <span class="value">{{ name }}</span></td>
+      <td width="33%"><span class="label">Age:</span> <span class="value">{{ age }} Years</span></td>
+      <td width="33%"><span class="label">Gender:</span> <span class="value" style="text-transform: capitalize;">{{ sex }}</span></td>
+    </tr>
+    <tr>
+      <td><span class="label">Height:</span> <span class="value">{{ height_display if height_display else (height ~ ' cm') }}</span></td>
+      <td><span class="label">Weight:</span> <span class="value">{{ weight_display if weight_display else (weight ~ ' kg') }}</span></td>
+      <td><span class="label">BMI:</span> <span class="value">{{ bmi }}</span></td>
+    </tr>
+    <tr>
+      <td><span class="label">Children:</span> <span class="value">{{ children }}</span></td>
+      <td><span class="label">Smoker:</span> <span class="value" style="text-transform: capitalize;">{{ smoker }}</span></td>
+      <td><span class="label">Region:</span> <span class="value" style="text-transform: capitalize;">{{ region }}</span></td>
+    </tr>
+    <tr>
+      <td><span class="label">Hypertension:</span> <span class="value" style="text-transform: capitalize;">{{ hypertension if hypertension else 'No' }}</span></td>
+      <td><span class="label">Diabetes:</span> <span class="value" style="text-transform: capitalize;">{{ diabetes if diabetes else 'No' }}</span></td>
+      <td><span class="label">Activity Level:</span> <span class="value" style="text-transform: capitalize;">{{ (activity_level | replace('_', ' ')) if activity_level else 'Lightly Active' }}</span></td>
+    </tr>
+    {% if health_score is defined and health_score %}
+    <tr>
+      <td><span class="label">AI Health Score:</span> <span class="value" style="font-weight: bold; color: {% if health_score|int >= 80 %}#2F855A{% elif health_score|int >= 70 %}#D69E2E{% else %}#C53030{% endif %};">{{ health_score }}/100</span></td>
+      <td><span class="label">Steps & BP:</span> <span class="value">{{ steps }} steps | {{ bp_sys }}/{{ bp_dia }} mmHg</span></td>
+      <td><span class="label">RHR & Sleep:</span> <span class="value">{{ heart_rate }} bpm | {{ sleep_quality }}% ({{ sleep_duration }}h)</span></td>
+    </tr>
+    {% endif %}
+  </table>
+
+  <div class="section-title">AI Cost Breakdown & Interpretability (SHAP Values)</div>
+  <p style="font-size: 9pt; color: #718096; margin-bottom: 10px;">The values below represent how each factor contributed to deviations from the baseline average insurance cost.</p>
+  <table class="table-data" style="margin-bottom: 20px;">
+    <thead>
+      <tr>
+        <th>Factor analyzed by AI</th>
+        <th style="text-align: right;">Impact on Charge (INR)</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for exp in exps %}
+        {% set exp_parts = exp.split(': ') %}
+        <tr>
+          <td>{{ exp_parts[0] | clean_pdf_text }}</td>
+          <td style="text-align: right; font-weight: bold;">{{ (exp_parts[1] if exp_parts|length > 1 else exp) | clean_pdf_val }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  {% if tips %}
+    <div class="section-title">Personalized Health & Cost Management Tips</div>
+    {% for tip in tips %}
+      <div class="list-item">• {{ tip | clean_pdf_text }}</div>
+    {% endfor %}
+  {% endif %}
+
+  {% if futures %}
+    <div class="section-title">5-Year Projected Charge Projections</div>
+    <p style="font-size: 9pt; color: #718096; margin-bottom: 10px;">Estimated projection assuming a minor weight increase and aging progression year-over-year.</p>
+    <table class="table-data">
+      <thead>
+        <tr>
+          <th>Year</th>
+          <th>Estimated Age</th>
+          <th>Estimated BMI</th>
+          <th style="text-align: right;">Projected Cost (INR)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for pred in futures %}
+          <tr>
+            <td>{{ pred.year }}</td>
+            <td>{{ (age | int) + (pred.year - 2026) }}</td>
+            <td>{{ '%.2f' | format((bmi | float) + (0.5 * (pred.year - 2026))) }}</td>
+            <td style="text-align: right; font-weight: bold; color: #16A34A;">₹{{ pred.cost }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% endif %}
+  {% if plans %}
+    <div class="section-title">Recommended Medical Insurance Plans</div>
+    <table class="table-data" style="margin-bottom: 20px;">
+      <thead>
+        <tr>
+          <th>Company & Plan Name</th>
+          <th>Sum Insured</th>
+          <th>Waiting Period</th>
+          <th style="text-align: right;">Est. Premium (Annual)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for plan in plans[:2] %}
+          <tr>
+            <td>
+              <strong style="color: #2D3748;">{{ plan.company }}</strong><br/>
+              <span style="font-size: 8pt; color: #718096;">{{ plan.plan_name }}</span>
+            </td>
+            <td>{{ plan.sum_insured }}</td>
+            <td>{{ plan.waiting_period }}</td>
+            <td style="text-align: right; font-weight: bold; color: #2F855A;">₹{{ plan.premium_annual }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% endif %}
+
+  <div class="footer">
+    This is an automated prediction generated by PredictMedix Machine Learning models and does not constitute official medical or financial advice.
+  </div>
+
+{% else %}
+  <!-- Web Version (Full Premium UI) -->
+  {% set tips = health_tips %}
+  {% set exps = explanations %}
+  {% set futures = future_predictions %}
+
+  <div style="margin-bottom: 1.5rem;">
+    <a href="{{ url_for('home') }}" class="btn btn-secondary" style="padding: 0.5rem 1rem; border-radius: 8px;">
+      <i class="fa-solid fa-arrow-left"></i> Back to Estimator
+    </a>
+  </div>
+
+  <!-- Emergency Alerts Section -->
+  {% if emergency_alerts %}
+    <div style="margin-bottom: 2rem; padding: 1rem 1.5rem; background: rgba(239, 68, 68, 0.1); border: 1px solid var(--danger); border-radius: 8px; display: flex; flex-direction: column; gap: 0.5rem;">
+      <h4 style="color: var(--danger); margin: 0; font-weight: 800; font-size: 1.1rem; display: flex; align-items: center; gap: 0.5rem;">
+        <i class="fa-solid fa-triangle-exclamation"></i> Emergency Clinical Alerts (Wearable Logs)
+      </h4>
+      <ul style="margin: 0; padding-left: 1.2rem; color: var(--danger); font-size: 0.9rem;">
+        {% for alert in emergency_alerts %}
+          <li>{{ alert }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+  {% endif %}
+
+  <div class="predictor-header" style="margin-bottom: 2rem;">
+    <h2>Your Cost Estimation Report</h2>
+    <p style="color: var(--text-secondary);">Here is the personalized AI prediction report generated for {{ name }}.</p>
+  </div>
+
+  <div class="report-container">
+    
+    <!-- Left Column: Summary Card and Action Buttons -->
+    <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+      <div class="glass-card report-summary-card">
+        <div class="report-avatar">
+          <i class="fa-solid fa-file-invoice-dollar"></i>
+        </div>
+        <div class="report-cost-title">Estimated Annual Charges</div>
+        <div class="report-cost-value">₹{{ cost }}</div>
+        <div class="report-cost-currency">INR (Indian Rupees)</div>
+
+        <div class="report-user-details">
+          <div class="detail-item">
+            <span class="detail-label">Age</span>
+            <span class="detail-value">{{ age }} Years</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Gender</span>
+            <span class="detail-value" style="text-transform: capitalize;">{{ sex }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Height</span>
+            <span class="detail-value">{{ height_display if height_display else (height ~ ' cm') }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Weight</span>
+            <span class="detail-value">{{ weight_display if weight_display else (weight ~ ' kg') }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">BMI</span>
+            <span class="detail-value">{{ bmi }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Children</span>
+            <span class="detail-value">{{ children }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Smoker</span>
+            <span class="detail-value" style="text-transform: capitalize;">{{ smoker }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Region</span>
+            <span class="detail-value">{{ region }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Hypertension</span>
+            <span class="detail-value" style="text-transform: capitalize;">{{ hypertension if hypertension else 'No' }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Diabetes</span>
+            <span class="detail-value" style="text-transform: capitalize;">{{ diabetes if diabetes else 'No' }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Activity Level</span>
+            <span class="detail-value" style="text-transform: capitalize;">{{ (activity_level | replace('_', ' ')) if activity_level else 'Lightly Active' }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action: Download PDF Form -->
+      <form action="{{ url_for('generate_pdf') }}" method="POST">
+        <!-- Hidden standard variables -->
+        <input type="hidden" name="name" value="{{ name }}">
+        <input type="hidden" name="age" value="{{ age }}">
+        <input type="hidden" name="sex" value="{{ sex }}">
+        <input type="hidden" name="height" value="{{ height }}">
+        <input type="hidden" name="height_display" value="{{ height_display }}">
+        <input type="hidden" name="weight" value="{{ weight }}">
+        <input type="hidden" name="weight_display" value="{{ weight_display }}">
+        <input type="hidden" name="bmi" value="{{ bmi }}">
+        <input type="hidden" name="children" value="{{ children }}">
+        <input type="hidden" name="smoker" value="{{ smoker }}">
+        <input type="hidden" name="region" value="{{ region }}">
+        <input type="hidden" name="cost" value="{{ cost }}">
+        <input type="hidden" name="hypertension" value="{{ hypertension }}">
+        <input type="hidden" name="diabetes" value="{{ diabetes }}">
+        <input type="hidden" name="activity_level" value="{{ activity_level }}">
+        <input type="hidden" name="health_score" value="{{ health_score }}">
+        <input type="hidden" name="steps" value="{{ steps }}">
+        <input type="hidden" name="bp_sys" value="{{ bp_sys }}">
+        <input type="hidden" name="bp_dia" value="{{ bp_dia }}">
+        <input type="hidden" name="heart_rate" value="{{ heart_rate }}">
+        <input type="hidden" name="sleep_quality" value="{{ sleep_quality }}">
+        <input type="hidden" name="sleep_duration" value="{{ sleep_duration }}">
+        <input type="hidden" name="is_pdf" value="true">
+        
+        <!-- Hidden lists serialized to JSON strings -->
+        <input type="hidden" name="health_tips_json" value='{{ tips | tojson }}'>
+        <input type="hidden" name="explanations_json" value='{{ exps | tojson }}'>
+        <input type="hidden" name="future_predictions_json" value='{{ futures | tojson }}'>
+        <input type="hidden" name="insurance_plans_json" value='{{ insurance_plans | tojson }}'>
+
+        <button type="submit" class="btn btn-primary" style="width: 100%; font-size: 1rem; padding: 0.9rem;">
+          <i class="fa-solid fa-file-pdf"></i> Download PDF Report
+        </button>
+      </form>
+
+      <!-- Medical Cost Breakdown Card -->
+      <div class="glass-card" style="padding: 1.5rem; margin-top: 1rem;">
+        <h3 class="report-section-title">
+          <i class="fa-solid fa-file-invoice-dollar" style="color: var(--success);"></i> Predicted Treatment Breakdown
+        </h3>
+        <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 1.2rem;">
+          Detailed cost distribution computed from predicted annual charges:
+        </p>
+        
+        <div style="display: flex; flex-direction: column; gap: 0.8rem; font-size: 0.9rem;">
+          <div style="display: flex; justify-content: space-between; border-bottom: 1px dashed var(--border); padding-bottom: 0.4rem;">
+            <span style="color: var(--text-secondary);"><i class="fa-solid fa-bed-pulse"></i> Hospitalization & Bed (55%)</span>
+            <strong style="color: var(--text-primary);">₹{{ hosp_charges }}</strong>
+          </div>
+          <div style="display: flex; justify-content: space-between; border-bottom: 1px dashed var(--border); padding-bottom: 0.4rem;">
+            <span style="color: var(--text-secondary);"><i class="fa-solid fa-vial-virus"></i> Diagnostic Tests (15%)</span>
+            <strong style="color: var(--text-primary);">₹{{ test_charges }}</strong>
+          </div>
+          <div style="display: flex; justify-content: space-between; border-bottom: 1px dashed var(--border); padding-bottom: 0.4rem;">
+            <span style="color: var(--text-secondary);"><i class="fa-solid fa-user-doctor"></i> Doctor Fees (10%)</span>
+            <strong style="color: var(--text-primary);">₹{{ consult_charges }}</strong>
+          </div>
+          <div style="display: flex; justify-content: space-between; padding-bottom: 0.4rem;">
+            <span style="color: var(--text-secondary);"><i class="fa-solid fa-prescription-bottle-medical"></i> Medicines & Consumables (20%)</span>
+            <strong style="color: var(--text-primary);">₹{{ medicine_charges }}</strong>
+          </div>
+        </div>
+      </div>
+
+      <!-- Smart Health Score Card -->
+      {% if health_score is defined and health_score %}
+        <div class="glass-card" style="text-align: center; padding: 1.5rem; margin-top: 1rem;">
+          <div style="font-size: 2.2rem; color: {% if health_score|int >= 85 %}var(--success){% elif health_score|int >= 70 %}var(--warning){% else %}var(--danger){% endif %}; margin-bottom: 0.5rem; font-weight: 800;">
+            <i class="fa-solid fa-heart-pulse"></i> {{ health_score }}/100
+          </div>
+          <div style="font-size: 1rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.5rem;">
+            AI Health & Lifestyle Score: 
+            {% if health_score|int >= 90 %}
+              <span style="color: var(--success);">Excellent (A+)</span>
+            {% elif health_score|int >= 80 %}
+              <span style="color: var(--success);">Good (A)</span>
+            {% elif health_score|int >= 70 %}
+              <span style="color: var(--warning);">Fair (B)</span>
+            {% elif health_score|int >= 60 %}
+              <span style="color: var(--warning);">Average (C)</span>
+            {% else %}
+              <span style="color: var(--danger);">Critical (D)</span>
+            {% endif %}
+          </div>
+          <p style="color: var(--text-secondary); font-size: 0.8rem; margin-bottom: 1.2rem;">
+            This score evaluates step counts, BP levels, heart rates, sleep quality, and active mins.
+          </p>
+          
+          <!-- Small Grid of Key Wearable Stats -->
+          <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.8rem; text-align: left; font-size: 0.8rem;">
+            <div style="padding: 0.5rem; background: var(--bg-secondary); border-radius: 6px;">
+              <span style="color: var(--text-secondary); display: block; font-size: 0.7rem;">Steps/Day</span>
+              <strong>{{ steps if steps else 0 }} steps</strong>
+            </div>
+            <div style="padding: 0.5rem; background: var(--bg-secondary); border-radius: 6px;">
+              <span style="color: var(--text-secondary); display: block; font-size: 0.7rem;">Blood Pressure</span>
+              <strong>{{ bp_sys }}/{{ bp_dia }} mmHg</strong>
+            </div>
+            <div style="padding: 0.5rem; background: var(--bg-secondary); border-radius: 6px;">
+              <span style="color: var(--text-secondary); display: block; font-size: 0.7rem;">Rest Heart Rate</span>
+              <strong>{{ heart_rate }} bpm</strong>
+            </div>
+            <div style="padding: 0.5rem; background: var(--bg-secondary); border-radius: 6px;">
+              <span style="color: var(--text-secondary); display: block; font-size: 0.7rem;">Sleep Quality</span>
+              <strong>{{ sleep_quality }}% ({{ sleep_duration }}h)</strong>
+            </div>
+          </div>
+        </div>
+      {% endif %}
+
+      <!-- Biological Age & Disease Risk Card -->
+      <div class="glass-card" style="padding: 1.5rem; margin-top: 1rem;">
+        <h3 class="report-section-title">
+          <i class="fa-solid fa-dna" style="color: var(--primary);"></i> Biological Age & Disease Risk
+        </h3>
+        
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.8rem; background: var(--bg-secondary); border-radius: 8px; margin-bottom: 1.2rem;">
+          <div>
+            <span style="font-size: 0.75rem; color: var(--text-secondary); display: block;">Actual Age</span>
+            <span style="font-size: 1.2rem; font-weight: 700; color: var(--text-primary);">{{ age }} Years</span>
+          </div>
+          <div style="text-align: right;">
+            <span style="font-size: 0.75rem; color: var(--text-secondary); display: block;">Biological Health Age</span>
+            <span style="font-size: 1.2rem; font-weight: 700; color: {% if (health_age | int) < (age | int) %}var(--success){% elif (health_age | int) == (age | int) %}var(--text-primary){% else %}var(--danger){% endif %};">
+              {{ health_age }} Years
+            </span>
+          </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 0.6rem; font-size: 0.85rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="color: var(--text-secondary);">Obesity / BMI Risk Status:</span>
+            <span class="badge {% if risk_obesity == 'High Risk' %}badge-danger{% else %}badge-success{% endif %}" style="padding: 0.25rem 0.5rem; border-radius: 4px; font-weight: 700; font-size: 0.75rem; color: white;">{{ risk_obesity }}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="color: var(--text-secondary);">Hypertension / BP Risk:</span>
+            <span class="badge {% if risk_hypertension == 'High Risk' %}badge-danger{% else %}badge-success{% endif %}" style="padding: 0.25rem 0.5rem; border-radius: 4px; font-weight: 700; font-size: 0.75rem; color: white;">{{ risk_hypertension }}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="color: var(--text-secondary);">Diabetes / Sugar Risk:</span>
+            <span class="badge {% if risk_diabetes == 'High Risk' %}badge-danger{% else %}badge-success{% endif %}" style="padding: 0.25rem 0.5rem; border-radius: 4px; font-weight: 700; font-size: 0.75rem; color: white;">{{ risk_diabetes }}</span>
+          </div>
+        </div>
+      <!-- Healthy Habit Streak Card -->
+      <div class="glass-card" style="padding: 1.5rem; margin-top: 1rem;">
+        <h3 class="report-section-title">
+          <i class="fa-solid fa-fire" style="color: #F59E0B;"></i> Healthy Habit Streak
+        </h3>
+        <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+          <div style="font-size: 2.2rem; color: #F59E0B; font-weight: 800; display: flex; align-items: center; gap: 0.25rem;">
+            🔥 <span id="streak-count">5</span>
+          </div>
+          <div>
+            <span style="font-weight: 700; color: var(--text-primary); display: block; font-size: 0.95rem;">Day Streak Active!</span>
+            <span style="font-size: 0.8rem; color: var(--text-secondary);">Keep meeting your goals to grow your streak.</span>
+          </div>
+        </div>
+
+        <div style="font-size: 0.85rem; display: flex; flex-direction: column; gap: 0.6rem; text-align: left;">
+          <div style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+            <input type="checkbox" id="habit-steps" checked style="cursor: pointer;">
+            <label for="habit-steps" style="cursor: pointer; color: var(--text-secondary); margin-bottom: 0;">Walk 8,000+ Steps (Done)</label>
+          </div>
+          <div style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+            <input type="checkbox" id="habit-water" checked style="cursor: pointer;">
+            <label for="habit-water" style="cursor: pointer; color: var(--text-secondary); margin-bottom: 0;">Drink 2.5L+ Water (Done)</label>
+          </div>
+          <div style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+            <input type="checkbox" id="habit-sleep" checked style="cursor: pointer;">
+            <label for="habit-sleep" style="cursor: pointer; color: var(--text-secondary); margin-bottom: 0;">Get 7+ Hours Sleep (Done)</label>
+          </div>
+          <div style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+            <input type="checkbox" id="habit-diet" style="cursor: pointer;">
+            <label for="habit-diet" id="label-diet" style="cursor: pointer; color: var(--text-primary); margin-bottom: 0; font-weight: 600;">Limit Sugar & Salt Intake</label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Daily Medication Scheduler & Tracker -->
+      <div class="glass-card" style="padding: 1.5rem; margin-top: 1rem;">
+        <h3 class="report-section-title">
+          <i class="fa-solid fa-prescription-bottle-medical" style="color: var(--primary);"></i> Daily Medication Tracker
+        </h3>
+        <p style="color: var(--text-secondary); font-size: 0.8rem; margin-bottom: 1rem;">
+          Track your daily medicines, set alerts, and manage stocks:
+        </p>
+
+        <div style="display: flex; flex-direction: column; gap: 0.8rem; font-size: 0.85rem;" id="med-list">
+          {% if hypertension == 'yes' %}
+            <div style="padding: 0.6rem; background: var(--bg-secondary); border-radius: 6px;" id="med-1">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                  <strong style="color: var(--text-primary); display: block;">Amlodipine (5mg)</strong>
+                  <span style="font-size: 0.75rem; color: var(--text-secondary);"><i class="fa-regular fa-clock"></i> Once daily (Morning)</span>
+                  <div style="margin-top: 0.25rem; display: flex; align-items: center; gap: 0.4rem; font-size: 0.75rem; color: var(--text-secondary);">
+                    <span>⏰ Alarm:</span>
+                    <input type="time" class="form-control" value="08:00" style="padding: 0.15rem 0.3rem; font-size: 0.75rem; width: 90px; height: auto; display: inline-block; border-radius: 4px;">
+                  </div>
+                  <span style="font-size: 0.75rem; display: block; margin-top: 0.25rem;" id="med-1-stock-label">Pills Remaining: <strong id="med-1-stock">10</strong></span>
+                </div>
+                <button onclick="markMedTaken('med-1', 10)" class="btn btn-secondary" style="font-size: 0.75rem; padding: 0.25rem 0.5rem; border-radius: 4px;">Take</button>
+              </div>
+              <div id="med-1-alert" style="margin-top: 0.4rem; display: none; font-size: 0.75rem; color: var(--danger); font-weight: 700;"></div>
+            </div>
+          {% endif %}
+          
+          {% if diabetes == 'yes' %}
+            <div style="padding: 0.6rem; background: var(--bg-secondary); border-radius: 6px;" id="med-2">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                  <strong style="color: var(--text-primary); display: block;">Metformin (500mg)</strong>
+                  <span style="font-size: 0.75rem; color: var(--text-secondary);"><i class="fa-regular fa-clock"></i> Twice daily (Post Meal)</span>
+                  <div style="margin-top: 0.25rem; display: flex; align-items: center; gap: 0.4rem; font-size: 0.75rem; color: var(--text-secondary);">
+                    <span>⏰ Alarms:</span>
+                    <input type="time" class="form-control" value="08:00" style="padding: 0.15rem 0.3rem; font-size: 0.75rem; width: 90px; height: auto; display: inline-block; border-radius: 4px;">
+                    <input type="time" class="form-control" value="20:00" style="padding: 0.15rem 0.3rem; font-size: 0.75rem; width: 90px; height: auto; display: inline-block; border-radius: 4px;">
+                  </div>
+                  <span style="font-size: 0.75rem; display: block; margin-top: 0.25rem;" id="med-2-stock-label">Pills Remaining: <strong id="med-2-stock">10</strong></span>
+                </div>
+                <button onclick="markMedTaken('med-2', 10)" class="btn btn-secondary" style="font-size: 0.75rem; padding: 0.25rem 0.5rem; border-radius: 4px;">Take</button>
+              </div>
+              <div id="med-2-alert" style="margin-top: 0.4rem; display: none; font-size: 0.75rem; color: var(--danger); font-weight: 700;"></div>
+            </div>
+          {% endif %}
+
+          <div style="padding: 0.6rem; background: var(--bg-secondary); border-radius: 6px;" id="med-3">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <strong style="color: var(--text-primary); display: block;">Multivitamin (Zincovit)</strong>
+                <span style="font-size: 0.75rem; color: var(--text-secondary);"><i class="fa-regular fa-clock"></i> Once daily (After lunch)</span>
+                <div style="margin-top: 0.25rem; display: flex; align-items: center; gap: 0.4rem; font-size: 0.75rem; color: var(--text-secondary);">
+                  <span>⏰ Alarm:</span>
+                  <input type="time" class="form-control" value="14:00" style="padding: 0.15rem 0.3rem; font-size: 0.75rem; width: 90px; height: auto; display: inline-block; border-radius: 4px;">
+                </div>
+                <span style="font-size: 0.75rem; display: block; margin-top: 0.25rem;" id="med-3-stock-label">Pills Remaining: <strong id="med-3-stock">15</strong></span>
+              </div>
+              <button onclick="markMedTaken('med-3', 15)" class="btn btn-secondary" style="font-size: 0.75rem; padding: 0.25rem 0.5rem; border-radius: 4px;">Take</button>
+            </div>
+            <div id="med-3-alert" style="margin-top: 0.4rem; display: none; font-size: 0.75rem; color: var(--danger); font-weight: 700;"></div>
+          </div>
+        </div>
+
+        <!-- Add Custom Medication Input with Time Selector -->
+        <div style="margin-top: 1rem; display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap;">
+          <input type="text" id="new-med-name" class="form-control" placeholder="Add medicine name..." style="font-size: 0.8rem; padding: 0.4rem; flex: 2; min-width: 150px;">
+          <input type="time" id="new-med-time" class="form-control" value="09:00" style="font-size: 0.8rem; padding: 0.4rem; flex: 1; min-width: 90px; border-radius: 4px;">
+          <button onclick="addNewMed()" class="btn btn-primary" style="font-size: 0.8rem; padding: 0.4rem 0.8rem; height: 35px;">Add</button>
+        </div>
+
+        <!-- OCR Prescription Scanner -->
+        <div style="margin-top: 1.2rem; padding: 1rem; border: 1px dashed var(--primary); border-radius: 8px; background: rgba(59,130,246,0.02); text-align: center; cursor: pointer;" onclick="document.getElementById('prescription-file').click();">
+          <i class="fa-solid fa-cloud-arrow-up" style="font-size: 1.5rem; color: var(--primary); margin-bottom: 0.5rem;"></i>
+          <span style="font-size: 0.85rem; font-weight: 700; color: var(--text-primary); display: block;">AI Prescription Scanner</span>
+          <span style="font-size: 0.75rem; color: var(--text-secondary);">Upload prescription or medicine image to auto-detect schedule</span>
+          <input type="file" id="prescription-file" style="display: none;" accept="image/*" onchange="simulateOCR(event)">
+        </div>
+
+        <!-- Scanning Loader Spinner -->
+        <div id="ocr-loader" style="display: none; margin-top: 1rem; text-align: center; font-size: 0.85rem; color: var(--text-secondary);">
+          <i class="fa-solid fa-circle-notch fa-spin" style="color: var(--primary); margin-right: 0.25rem;"></i> Scanning prescription image via OCR...
+        </div>
+
+        <!-- Review Scanned Medicines Modal / Dialog -->
+        <div id="ocr-review-box" style="display: none; margin-top: 1rem; padding: 1rem; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 8px; text-align: left;">
+          <h4 style="margin: 0 0 0.5rem 0; font-size: 0.85rem; color: var(--primary); font-weight: 800;">Review Detected Medications</h4>
+          
+          <div style="display: flex; flex-direction: column; gap: 0.6rem; margin-bottom: 1rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem;">
+              <span><strong>Scanned:</strong> Telmisartan (40mg)</span>
+              <span>15 Pills | 1 daily</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem;">
+              <span><strong>Scanned:</strong> Paracetamol (650mg)</span>
+              <span>20 Pills | 3 daily</span>
+            </div>
+          </div>
+          
+          <div style="display: flex; gap: 0.5rem;">
+            <button onclick="approveOCR()" class="btn btn-primary" style="font-size: 0.8rem; padding: 0.4rem 0.8rem; flex: 1;">Set Reminder</button>
+            <button onclick="cancelOCR()" class="btn btn-secondary" style="font-size: 0.8rem; padding: 0.4rem 0.8rem;">Cancel</button>
+          </div>
+        </div>
+      </div>
+
+      <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        const dietCheckbox = document.getElementById('habit-diet');
+        const streakCount = document.getElementById('streak-count');
+        const labelDiet = document.getElementById('label-diet');
+
+        dietCheckbox.addEventListener('change', function() {
+          if (dietCheckbox.checked) {
+            streakCount.textContent = "6";
+            labelDiet.style.color = "var(--text-secondary)";
+            labelDiet.style.fontWeight = "normal";
+            labelDiet.textContent = "Limit Sugar & Salt Intake (Done)";
+          } else {
+            streakCount.textContent = "5";
+            labelDiet.style.color = "var(--text-primary)";
+            labelDiet.style.fontWeight = "600";
+            labelDiet.textContent = "Limit Sugar & Salt Intake";
+          }
+        });
+      });
+
+      function markMedTaken(id, defaultMax = 10) {
+        const item = document.getElementById(id);
+        const stockSpan = document.getElementById(id + '-stock');
+        const alertDiv = document.getElementById(id + '-alert');
+        const btn = item.querySelector('button');
+
+        if (stockSpan) {
+          let currentStock = parseInt(stockSpan.textContent);
+          if (currentStock > 0) {
+            currentStock -= 1;
+            stockSpan.textContent = currentStock;
+
+            if (currentStock === 0) {
+              alertDiv.innerHTML = `🚨 Out of stock! Medicine has ended. <a href="javascript:void(0)" onclick="refillMed('${id}', ${defaultMax})" style="color: var(--primary); text-decoration: underline; margin-left: 0.5rem;">Refill Stock</a>`;
+              alertDiv.style.display = "block";
+              btn.disabled = true;
+              btn.textContent = "Empty";
+              btn.style.background = "var(--border)";
+            } else if (currentStock <= 3) {
+              alertDiv.innerHTML = `⚠️ Low Stock! Only ${currentStock} pills remaining. Refill soon. <a href="javascript:void(0)" onclick="refillMed('${id}', ${defaultMax})" style="color: var(--primary); text-decoration: underline; margin-left: 0.5rem;">Refill</a>`;
+              alertDiv.style.display = "block";
+              item.style.opacity = "0.8";
+            } else {
+              alertDiv.style.display = "none";
+            }
+          }
+        }
+      }
+
+      function refillMed(id, count) {
+        const stockSpan = document.getElementById(id + '-stock');
+        const alertDiv = document.getElementById(id + '-alert');
+        const btn = document.getElementById(id).querySelector('button');
+
+        if (stockSpan) {
+          stockSpan.textContent = count;
+          alertDiv.style.display = "none";
+          document.getElementById(id).style.opacity = "1";
+          btn.disabled = false;
+          btn.textContent = "Take";
+          btn.style.background = "";
+          btn.style.color = "";
+        }
+      }
+
+      function formatTime12h(timeStr) {
+        if (!timeStr) return "09:00 AM";
+        let [hours, minutes] = timeStr.split(':');
+        hours = parseInt(hours);
+        let ampm = hours >= 12 ? 'PM' : 'AM';
+        hours = hours % 12;
+        hours = hours ? hours : 12;
+        return hours + ':' + minutes + ' ' + ampm;
+      }
+
+      function addNewMed() {
+        const input = document.getElementById('new-med-name');
+        const timeInput = document.getElementById('new-med-time');
+        const name = input.value.trim();
+        if (!name) return;
+
+        const list = document.getElementById('med-list');
+        const id = 'med-' + Date.now();
+        const alertTime = formatTime12h(timeInput.value);
+
+        const item = document.createElement('div');
+        item.id = id;
+        item.style.cssText = "padding: 0.6rem; background: var(--bg-secondary); border-radius: 6px; margin-top: 0.5rem;";
+        item.innerHTML = `
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <strong style="color: var(--text-primary); display: block;">${name}</strong>
+              <span style="font-size: 0.75rem; color: var(--text-secondary);"><i class="fa-regular fa-clock"></i> Custom Alert Schedule</span>
+              <div style="margin-top: 0.25rem; display: flex; align-items: center; gap: 0.4rem; font-size: 0.75rem; color: var(--text-secondary);">
+                <span>⏰ Alarm:</span>
+                <input type="time" class="form-control" value="${timeInput.value}" style="padding: 0.15rem 0.3rem; font-size: 0.75rem; width: 90px; height: auto; display: inline-block; border-radius: 4px;">
+              </div>
+              <span style="font-size: 0.75rem; display: block; margin-top: 0.25rem;" id="${id}-stock-label">Pills Remaining: <strong id="${id}-stock">30</strong></span>
+            </div>
+            <button onclick="markMedTaken('${id}', 30)" class="btn btn-secondary" style="font-size: 0.75rem; padding: 0.25rem 0.5rem; border-radius: 4px;">Take</button>
+          </div>
+          <div id="${id}-alert" style="margin-top: 0.4rem; display: none; font-size: 0.75rem; color: var(--danger); font-weight: 700;"></div>
+        `;
+
+        list.appendChild(item);
+        input.value = "";
+      }
+
+      function simulateOCR(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const loader = document.getElementById('ocr-loader');
+        const reviewBox = document.getElementById('ocr-review-box');
+        
+        reviewBox.style.display = "none";
+        loader.style.display = "block";
+
+        setTimeout(() => {
+          loader.style.display = "none";
+          reviewBox.style.display = "block";
+        }, 1500);
+      }
+
+      function approveOCR() {
+        const list = document.getElementById('med-list');
+        const id1 = 'med-' + Date.now() + '-1';
+        const id2 = 'med-' + Date.now() + '-2';
+
+        const item1 = document.createElement('div');
+        item1.id = id1;
+        item1.style.cssText = "padding: 0.6rem; background: var(--bg-secondary); border-radius: 6px; margin-top: 0.5rem;";
+        item1.innerHTML = `
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <strong style="color: var(--text-primary); display: block;">Telmisartan (40mg)</strong>
+              <span style="font-size: 0.75rem; color: var(--text-secondary);"><i class="fa-regular fa-clock"></i> Once daily (Morning)</span>
+              <div style="margin-top: 0.25rem; display: flex; align-items: center; gap: 0.4rem; font-size: 0.75rem; color: var(--text-secondary);">
+                <span>⏰ Alarm:</span>
+                <input type="time" class="form-control" value="08:00" style="padding: 0.15rem 0.3rem; font-size: 0.75rem; width: 90px; height: auto; display: inline-block; border-radius: 4px;">
+              </div>
+              <span style="font-size: 0.75rem; display: block; margin-top: 0.25rem;" id="${id1}-stock-label">Pills Remaining: <strong id="${id1}-stock">15</strong></span>
+            </div>
+            <button onclick="markMedTaken('${id1}', 15)" class="btn btn-secondary" style="font-size: 0.75rem; padding: 0.25rem 0.5rem; border-radius: 4px;">Take</button>
+          </div>
+          <div id="${id1}-alert" style="margin-top: 0.4rem; display: none; font-size: 0.75rem; color: var(--danger); font-weight: 700;"></div>
+        `;
+        list.appendChild(item1);
+
+        const item2 = document.createElement('div');
+        item2.id = id2;
+        item2.style.cssText = "padding: 0.6rem; background: var(--bg-secondary); border-radius: 6px; margin-top: 0.5rem;";
+        item2.innerHTML = `
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <strong style="color: var(--text-primary); display: block;">Paracetamol (650mg)</strong>
+              <span style="font-size: 0.75rem; color: var(--text-secondary);"><i class="fa-regular fa-clock"></i> Three times daily (Post Meal)</span>
+              <div style="margin-top: 0.25rem; display: flex; align-items: center; gap: 0.4rem; font-size: 0.75rem; color: var(--text-secondary);">
+                <span>⏰ Alarms:</span>
+                <input type="time" class="form-control" value="08:00" style="padding: 0.15rem 0.3rem; font-size: 0.75rem; width: 90px; height: auto; display: inline-block; border-radius: 4px; margin-bottom: 0.2rem;">
+                <input type="time" class="form-control" value="13:00" style="padding: 0.15rem 0.3rem; font-size: 0.75rem; width: 90px; height: auto; display: inline-block; border-radius: 4px; margin-bottom: 0.2rem;">
+                <input type="time" class="form-control" value="20:00" style="padding: 0.15rem 0.3rem; font-size: 0.75rem; width: 90px; height: auto; display: inline-block; border-radius: 4px;">
+              </div>
+              <span style="font-size: 0.75rem; display: block; margin-top: 0.25rem;" id="${id2}-stock-label">Pills Remaining: <strong id="${id2}-stock">20</strong></span>
+            </div>
+            <button onclick="markMedTaken('${id2}', 20)" class="btn btn-secondary" style="font-size: 0.75rem; padding: 0.25rem 0.5rem; border-radius: 4px;">Take</button>
+          </div>
+          <div id="${id2}-alert" style="margin-top: 0.4rem; display: none; font-size: 0.75rem; color: var(--danger); font-weight: 700;"></div>
+        `;
+        list.appendChild(item2);
+
+        document.getElementById('ocr-review-box').style.display = "none";
+        document.getElementById('prescription-file').value = "";
+      }
+
+      function cancelOCR() {
+        document.getElementById('ocr-review-box').style.display = "none";
+        document.getElementById('prescription-file').value = "";
+      }
+      </script>
+
+    </div>
+
+    <!-- Right Column: Explanations, Health Tips, Future Table -->
+    <div class="report-details-panel">
+      
+      <!-- AI Explanations -->
+      <div class="glass-card">
+        <h3 class="report-section-title">
+          <i class="fa-solid fa-chart-bar" style="color: var(--primary);"></i> AI Interpretation (SHAP Analysis)
+        </h3>
+        <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1.5rem;">
+          How each factor influences your insurance charges compared to the average base cost:
+        </p>
+        <div class="shap-list">
+          {% for exp in exps %}
+            {% set exp_parts = exp.split(': ') %}
+            {% set label = exp_parts[0] %}
+            {% set val_str = exp_parts[1] if exp_parts|length > 1 else exp %}
+            <div class="shap-item">
+              <span class="shap-item-label">{{ label }}</span>
+              <span class="shap-item-value {% if '-' in val_str %}negative{% else %}positive{% endif %}">
+                {{ val_str }}
+              </span>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Health Tips -->
+      {% if tips %}
+        <div class="glass-card">
+          <h3 class="report-section-title">
+            <i class="fa-solid fa-heart" style="color: var(--danger);"></i> Personalized Health Recommendations
+          </h3>
+          <div class="tips-grid">
+            {% for tip in tips %}
+              <div class="tip-card 
+                {% if 'BMI कम' in tip or 'BMI low' in tip %}bmi-low
+                {% elif 'BMI सामान्य' in tip or 'BMI normal' in tip %}bmi-normal
+                {% elif 'BMI थोड़ा' in tip or 'BMI very high' in tip or 'BMI is high' in tip or 'BMI is very high' in tip %}bmi-high
+                {% elif 'धूम्रपान' in tip or 'smoking' in tip %}smoker
+                {% endif %}">
+                {{ tip }}
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      {% endif %}
+
+      <!-- Yoga, Meditation & AYUSH Wellness Card -->
+      <div class="glass-card" style="padding: 1.5rem; margin-top: 1rem;">
+        <h3 class="report-section-title">
+          <i class="fa-solid fa-om" style="color: #F59E0B;"></i> Yoga, Meditation & AYUSH Initiatives
+        </h3>
+        <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1.2rem;">
+          Personalized holistic recommendations & government initiatives to manage health risks:
+        </p>
+
+        <!-- Yoga/Meditation suggestions based on conditions -->
+        <div style="margin-bottom: 1.5rem;">
+          <h4 style="font-size: 0.85rem; font-weight: 800; color: var(--primary); margin: 0 0 0.6rem 0;">Suggested Yoga & Pranayama Protocols</h4>
+          <div style="display: flex; flex-direction: column; gap: 0.8rem; font-size: 0.85rem;">
+            
+            {% if hypertension == 'yes' or (bp_sys|int) > 135 %}
+              <div style="padding: 0.6rem; background: rgba(59,130,246,0.05); border-left: 3px solid #3B82F6; border-radius: 4px;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 0.3rem;">
+                  <strong style="color: var(--text-primary); text-align: left; display: block;">For Hypertension & BP Control:</strong>
+                  <span style="display: inline-block; font-size: 0.7rem; background: rgba(16,185,129,0.1); color: #10B981; padding: 0.15rem 0.4rem; border-radius: 4px; font-weight: 700;">💰 Savings: ~₹2,800/year</span>
+                </div>
+                <p style="margin: 0.2rem 0 0 0; color: var(--text-secondary); font-size: 0.8rem; text-align: left; line-height: 1.4;">
+                  Practice <strong>Anulom Vilom Pranayama</strong> (Alternate Nostril Breathing) and <strong>Shavasana</strong> (Corpse Pose) daily for 10-15 minutes.
+                </p>
+                <div style="margin-top: 0.3rem; padding: 0.4rem; background: var(--bg-primary); border-radius: 4px; font-size: 0.75rem; color: var(--text-secondary); text-align: left; line-height: 1.3;">
+                  <strong>🧬 Rationale:</strong> Alternate nostril breathing regulates the autonomic nervous system by shifting the body from a sympathetic (fight-or-flight) to a parasympathetic (rest-and-digest) state, helping reduce arterial pressure. Shavasana reduces peripheral vascular resistance and relaxes skeletal muscles, directly lowering blood pressure.
+                </div>
+              </div>
+            {% endif %}
+
+            {% if diabetes == 'yes' or risk_diabetes == 'High Risk' %}
+              <div style="padding: 0.6rem; background: rgba(16,185,129,0.05); border-left: 3px solid #10B981; border-radius: 4px;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 0.3rem;">
+                  <strong style="color: var(--text-primary); text-align: left; display: block;">For Diabetes Management:</strong>
+                  <span style="display: inline-block; font-size: 0.7rem; background: rgba(16,185,129,0.1); color: #10B981; padding: 0.15rem 0.4rem; border-radius: 4px; font-weight: 700;">💰 Savings: ~₹3,500/year</span>
+                </div>
+                <p style="margin: 0.2rem 0 0 0; color: var(--text-secondary); font-size: 0.8rem; text-align: left; line-height: 1.4;">
+                  Incorporate <strong>Mandukasana (Frog Pose)</strong> and <strong>Vakrasana (Spinal Twist)</strong> to stimulate the pancreas and liver.
+                </p>
+                <div style="margin-top: 0.3rem; padding: 0.4rem; background: var(--bg-primary); border-radius: 4px; font-size: 0.75rem; color: var(--text-secondary); text-align: left; line-height: 1.3;">
+                  <strong>🧬 Rationale:</strong> Mandukasana involves deep abdominal compression while bending forward, which physically massages intra-abdominal organs and stimulates the pancreatic beta cells to produce and secrete insulin. Vakrasana improves blood circulation to the liver and kidneys, boosting overall metabolic clearance.
+                </div>
+              </div>
+            {% endif %}
+
+            {% if bmi|float > 25.0 %}
+              <div style="padding: 0.6rem; background: rgba(245,158,11,0.05); border-left: 3px solid #F59E0B; border-radius: 4px;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 0.3rem;">
+                  <strong style="color: var(--text-primary); text-align: left; display: block;">For Weight Control & Obesity:</strong>
+                  <span style="display: inline-block; font-size: 0.7rem; background: rgba(16,185,129,0.1); color: #10B981; padding: 0.15rem 0.4rem; border-radius: 4px; font-weight: 700;">💰 Savings: ~₹4,200/year</span>
+                </div>
+                <p style="margin: 0.2rem 0 0 0; color: var(--text-secondary); font-size: 0.8rem; text-align: left; line-height: 1.4;">
+                  Perform <strong>Surya Namaskar</strong> (12 steps of Sun Salutation) and <strong>Kapalbhati Pranayama</strong>.
+                </p>
+                <div style="margin-top: 0.3rem; padding: 0.4rem; background: var(--bg-primary); border-radius: 4px; font-size: 0.75rem; color: var(--text-secondary); text-align: left; line-height: 1.3;">
+                  <strong>🧬 Rationale:</strong> Surya Namaskar is a dynamic full-body aerobic sequence that increases heart rate, burns calories, and recruits major skeletal muscle groups to improve core strength. Kapalbhati uses rapid abdominal exhalations to tone the abdominal muscles, improve bowel motility, and elevate the Basal Metabolic Rate (BMR).
+                </div>
+              </div>
+            {% endif %}
+
+            <div style="padding: 0.6rem; background: rgba(139,92,246,0.05); border-left: 3px solid #8B5CF6; border-radius: 4px;">
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 0.3rem;">
+                <strong style="color: var(--text-primary); text-align: left; display: block;">Daily Mental Resilience (Stress):</strong>
+                <span style="display: inline-block; font-size: 0.7rem; background: rgba(16,185,129,0.1); color: #10B981; padding: 0.15rem 0.4rem; border-radius: 4px; font-weight: 700;">💰 Savings: ~₹1,500/year</span>
+              </div>
+              <p style="margin: 0.2rem 0 0 0; color: var(--text-secondary); font-size: 0.8rem; text-align: left; line-height: 1.4;">
+                Practice 15 minutes of <strong>Dhyana (Mindfulness Meditation)</strong> or <strong>Bhramari Pranayama</strong> (Bee Breath).
+              </p>
+              <div style="margin-top: 0.3rem; padding: 0.4rem; background: var(--bg-primary); border-radius: 4px; font-size: 0.75rem; color: var(--text-secondary); text-align: left; line-height: 1.3;">
+                <strong>🧬 Rationale:</strong> Dhyana decreases the size of the amygdala (the brain's fear/stress center) and lowers systemic cortisol levels. Bhramari generates a low-frequency hum that vibrates the cranium, stimulating the vagus nerve and releasing nitric oxide, which instantly dilates blood vessels and calms mental chatter.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Government of India Initiatives -->
+        <div>
+          <h4 style="font-size: 0.85rem; font-weight: 800; color: var(--primary); margin: 0 0 0.6rem 0; text-align: left;">Government of India Wellness Initiatives</h4>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.8rem; font-size: 0.8rem; text-align: left;">
+            
+            <div style="padding: 0.6rem; background: var(--bg-secondary); border-radius: 6px;">
+              <strong style="color: var(--text-primary); display: block;"><i class="fa-solid fa-mobile-screen-button"></i> Y-Break (Yoga Break) App</strong>
+              <span style="color: var(--text-secondary); display: block; margin-top: 0.2rem; line-height: 1.3;">
+                A 5-minute yoga protocol designed by the Ministry of AYUSH for working professionals to reduce stress and fatigue.
+              </span>
+            </div>
+
+            <div style="padding: 0.6rem; background: var(--bg-secondary); border-radius: 6px;">
+              <strong style="color: var(--text-primary); display: block;"><i class="fa-solid fa-heart-pulse"></i> Fit India Movement</strong>
+              <span style="color: var(--text-secondary); display: block; margin-top: 0.2rem; line-height: 1.3;">
+                Govt initiative encouraging citizens to include 30 minutes of physical activity daily in their routine to reduce chronic diseases.
+              </span>
+            </div>
+
+            <div style="padding: 0.6rem; background: var(--bg-secondary); border-radius: 6px;">
+              <strong style="color: var(--text-primary); display: block;"><i class="fa-solid fa-globe"></i> Namaste Yoga Portal</strong>
+              <span style="color: var(--text-secondary); display: block; margin-top: 0.2rem; line-height: 1.3;">
+                National database to discover verified local yoga schools, instructors, events, and wellness clinics under AYUSH.
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Future Projections -->
+      {% if futures %}
+        <div class="glass-card">
+          <h3 class="report-section-title">
+            <i class="fa-solid fa-timeline" style="color: var(--secondary);"></i> 5-Year Charge Projections
+          </h3>
+          <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1.5rem;">
+            Estimated charge progression assuming standard aging (+1 year) and minor weight gain (+0.5 BMI/year):
+          </p>
+          <div class="table-responsive">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Year</th>
+                  <th>Age</th>
+                  <th>BMI</th>
+                  <th style="text-align: right;">Estimated Cost</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for pred in futures %}
+                  <tr>
+                    <td>{{ pred.year }}</td>
+                    <td>{{ (age | int) + (pred.year - 2026) }}</td>
+                    <td>{{ '%.2f' | format((bmi | float) + (0.5 * (pred.year - 2026))) }}</td>
+                    <td style="text-align: right; color: var(--success); font-weight: 700;">₹{{ pred.cost }}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      {% endif %}
+
+      <!-- Health Improvement Simulator -->
+      <div class="glass-card">
+        <h3 class="report-section-title"><i class="fa-solid fa-gamepad" style="color: var(--primary);"></i> Health & Cost Optimization Sandbox</h3>
+        <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1.5rem;">
+          Interactively modify your demographic and wearable vitals to see their combined impact on your predicted medical expenses:
+        </p>
+
+        <!-- Sandbox Layout Grid -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; text-align: left;">
+          
+          <!-- Column 1: Demographics & Vitals -->
+          <div>
+            <h4 style="margin: 0 0 1rem 0; font-size: 0.95rem; color: var(--primary); font-weight: 700; border-bottom: 1px dashed var(--border); padding-bottom: 0.3rem;">
+              <i class="fa-solid fa-id-card"></i> Demographics & Vitals
+            </h4>
+            
+            <!-- Age Slider -->
+            <div style="margin-bottom: 1rem;">
+              <label for="sb-age" style="font-size: 0.8rem; font-weight: 600; color: var(--text-primary); display: flex; justify-content: space-between;">
+                <span>Age</span> <span id="sb-age-val" style="color: var(--primary); font-weight: 700;">{{ age }} yrs</span>
+              </label>
+              <input type="range" id="sb-age" min="18" max="80" value="{{ age }}" style="width: 100%; cursor: pointer;">
+            </div>
+
+            <!-- Gender Select -->
+            <div style="margin-bottom: 1rem;">
+              <label for="sb-sex" style="font-size: 0.8rem; font-weight: 600; color: var(--text-primary); display: block; margin-bottom: 0.3rem;">Gender</label>
+              <select id="sb-sex" class="form-control" style="width: 100%; font-size: 0.85rem; padding: 0.4rem;">
+                <option value="male" {% if sex == 'male' %}selected{% endif %}>Male</option>
+                <option value="female" {% if sex == 'female' %}selected{% endif %}>Female</option>
+              </select>
+            </div>
+
+            <!-- Children Slider -->
+            <div style="margin-bottom: 1rem;">
+              <label for="sb-children" style="font-size: 0.8rem; font-weight: 600; color: var(--text-primary); display: flex; justify-content: space-between;">
+                <span>Children/Dependents</span> <span id="sb-children-val" style="color: var(--primary); font-weight: 700;">{{ children if children else 0 }}</span>
+              </label>
+              <input type="range" id="sb-children" min="0" max="5" value="{{ children if children else 0 }}" style="width: 100%; cursor: pointer;">
+            </div>
+
+            <!-- Smoking Select -->
+            <div style="margin-bottom: 1rem;">
+              <label for="sb-smoker" style="font-size: 0.8rem; font-weight: 600; color: var(--text-primary); display: block; margin-bottom: 0.3rem;">Smoking Habit</label>
+              <select id="sb-smoker" class="form-control" style="width: 100%; font-size: 0.85rem; padding: 0.4rem;">
+                <option value="yes" {% if smoker == 'yes' %}selected{% endif %}>Active Smoker</option>
+                <option value="no" {% if smoker == 'no' %}selected{% endif %}>Non-Smoker</option>
+              </select>
+            </div>
+
+            <!-- Systolic BP Slider -->
+            <div style="margin-bottom: 1rem;">
+              <label for="sb-bpsys" style="font-size: 0.8rem; font-weight: 600; color: var(--text-primary); display: flex; justify-content: space-between;">
+                <span>Systolic BP</span> <span id="sb-bpsys-val" style="color: var(--primary); font-weight: 700;">{{ bp_sys if bp_sys else 120 }} mmHg</span>
+              </label>
+              <input type="range" id="sb-bpsys" min="90" max="180" value="{{ bp_sys if bp_sys else 120 }}" style="width: 100%; cursor: pointer;">
+            </div>
+
+            <!-- Diastolic BP Slider -->
+            <div style="margin-bottom: 1rem;">
+              <label for="sb-bpdia" style="font-size: 0.8rem; font-weight: 600; color: var(--text-primary); display: flex; justify-content: space-between;">
+                <span>Diastolic BP</span> <span id="sb-bpdia-val" style="color: var(--primary); font-weight: 700;">{{ bp_dia if bp_dia else 80 }} mmHg</span>
+              </label>
+              <input type="range" id="sb-bpdia" min="60" max="110" value="{{ bp_dia if bp_dia else 80 }}" style="width: 100%; cursor: pointer;">
+            </div>
+          </div>
+
+          <!-- Column 2: Smart Wearables Vitals -->
+          <div>
+            <h4 style="margin: 0 0 1rem 0; font-size: 0.95rem; color: var(--primary); font-weight: 700; border-bottom: 1px dashed var(--border); padding-bottom: 0.3rem;">
+              <i class="fa-solid fa-clock"></i> Wearable Parameters
+            </h4>
+
+            <!-- Step Count Slider -->
+            <div style="margin-bottom: 1rem;">
+              <label for="sb-steps" style="font-size: 0.8rem; font-weight: 600; color: var(--text-primary); display: flex; justify-content: space-between;">
+                <span>Daily Steps</span> <span id="sb-steps-val" style="color: var(--primary); font-weight: 700;">{{ steps if steps else 8500 }} steps</span>
+              </label>
+              <input type="range" id="sb-steps" min="1000" max="15000" step="500" value="{{ steps if steps else 8500 }}" style="width: 100%; cursor: pointer;">
+            </div>
+
+            <!-- Resting Heart Rate -->
+            <div style="margin-bottom: 1rem;">
+              <label for="sb-rhr" style="font-size: 0.8rem; font-weight: 600; color: var(--text-primary); display: flex; justify-content: space-between;">
+                <span>Resting Heart Rate</span> <span id="sb-rhr-val" style="color: var(--primary); font-weight: 700;">{{ heart_rate if heart_rate else 72 }} bpm</span>
+              </label>
+              <input type="range" id="sb-rhr" min="50" max="120" value="{{ heart_rate if heart_rate else 72 }}" style="width: 100%; cursor: pointer;">
+            </div>
+
+            <!-- Sleep Duration -->
+            <div style="margin-bottom: 1rem;">
+              <label for="sb-sleepdur" style="font-size: 0.8rem; font-weight: 600; color: var(--text-primary); display: flex; justify-content: space-between;">
+                <span>Sleep Duration</span> <span id="sb-sleepdur-val" style="color: var(--primary); font-weight: 700;">{{ sleep_duration if sleep_duration else 7.5 }} hrs</span>
+              </label>
+              <input type="range" id="sb-sleepdur" min="4" max="10" step="0.5" value="{{ sleep_duration if sleep_duration else 7.5 }}" style="width: 100%; cursor: pointer;">
+            </div>
+
+            <!-- Sleep Quality -->
+            <div style="margin-bottom: 1rem;">
+              <label for="sb-sleepqual" style="font-size: 0.8rem; font-weight: 600; color: var(--text-primary); display: flex; justify-content: space-between;">
+                <span>Sleep Quality</span> <span id="sb-sleepqual-val" style="color: var(--primary); font-weight: 700;">{{ sleep_quality if sleep_quality else 80 }}%</span>
+              </label>
+              <input type="range" id="sb-sleepqual" min="30" max="100" value="{{ sleep_quality if sleep_quality else 80 }}" style="width: 100%; cursor: pointer;">
+            </div>
+
+            <!-- SpO2 Slider -->
+            <div style="margin-bottom: 1rem;">
+              <label for="sb-spo2" style="font-size: 0.8rem; font-weight: 600; color: var(--text-primary); display: flex; justify-content: space-between;">
+                <span>Blood Oxygen (SpO₂)</span> <span id="sb-spo2-val" style="color: var(--primary); font-weight: 700;">{{ spo2 if spo2 else 98 }}%</span>
+              </label>
+              <input type="range" id="sb-spo2" min="85" max="100" value="{{ spo2 if spo2 else 98 }}" style="width: 100%; cursor: pointer;">
+            </div>
+
+            <!-- Water Intake Slider -->
+            <div style="margin-bottom: 1rem;">
+              <label for="sb-water" style="font-size: 0.8rem; font-weight: 600; color: var(--text-primary); display: flex; justify-content: space-between;">
+                <span>Water Intake</span> <span id="sb-water-val" style="color: var(--primary); font-weight: 700;">{{ water_intake if water_intake else 2.5 }} L</span>
+              </label>
+              <input type="range" id="sb-water" min="1" max="5" step="0.5" value="{{ water_intake if water_intake else 2.5 }}" style="width: 100%; cursor: pointer;">
+            </div>
+
+            <!-- Stress Level Slider -->
+            <div style="margin-bottom: 1rem;">
+              <label for="sb-stress" style="font-size: 0.8rem; font-weight: 600; color: var(--text-primary); display: flex; justify-content: space-between;">
+                <span>Stress Level</span> <span id="sb-stress-val" style="color: var(--primary); font-weight: 700;">{{ stress_level if stress_level else 4 }}/10</span>
+              </label>
+              <input type="range" id="sb-stress" min="1" max="10" value="{{ stress_level if stress_level else 4 }}" style="width: 100%; cursor: pointer;">
+            </div>
+
+            <!-- Active Minutes Slider -->
+            <div style="margin-bottom: 1rem;">
+              <label for="sb-active" style="font-size: 0.8rem; font-weight: 600; color: var(--text-primary); display: flex; justify-content: space-between;">
+                <span>Active Minutes</span> <span id="sb-active-val" style="color: var(--primary); font-weight: 700;">{{ active_mins if active_mins else 30 }} mins</span>
+              </label>
+              <input type="range" id="sb-active" min="0" max="120" step="5" value="{{ active_mins if active_mins else 30 }}" style="width: 100%; cursor: pointer;">
+            </div>
+          </div>
+        </div>
+
+        <!-- Simulated Cost Output Panel -->
+        <div style="margin-top: 1.5rem; padding: 1.2rem; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 1rem;">
+          <div style="text-align: left;">
+            <span style="font-size: 0.8rem; color: var(--text-secondary); display: block;">Simulated Sandbox Annual Cost:</span>
+            <strong id="sandbox-predicted-cost" style="font-size: 1.6rem; color: var(--success);">₹{{ cost }}</strong>
+          </div>
+          <div style="text-align: right;">
+            <span id="sandbox-savings" style="font-size: 0.9rem; font-weight: 700; color: var(--success); padding: 0.35rem 0.8rem; background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.15); border-radius: 6px;">
+              Potential Saving: ₹0.00
+            </span>
+          </div>
+        </div>
+
+        <!-- SVG Interactive Graph -->
+        <div style="margin-top: 1.5rem; background: var(--bg-secondary); border-radius: 12px; padding: 1rem; border: 1px solid var(--border); position: relative;">
+          <h4 style="margin: 0 0 0.8rem 0; font-size: 0.85rem; color: var(--text-primary); text-align: left; display: flex; align-items: center; gap: 0.4rem;">
+            <i class="fa-solid fa-chart-area" style="color: var(--primary);"></i> Cost Optimization Curve (Normalized Health Score)
+          </h4>
+          <svg id="sandbox-svg" viewBox="0 0 500 200" style="width: 100%; height: auto; display: block; overflow: visible;">
+            <defs>
+              <linearGradient id="curve-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#EF4444" />
+                <stop offset="50%" stop-color="#F59E0B" />
+                <stop offset="100%" stop-color="#10B981" />
+              </linearGradient>
+            </defs>
+            
+            <!-- Grid Lines -->
+            <line x1="0" y1="50" x2="500" y2="50" stroke="var(--border)" stroke-width="0.5" stroke-dasharray="4,4" />
+            <line x1="0" y1="100" x2="500" y2="100" stroke="var(--border)" stroke-width="0.5" stroke-dasharray="4,4" />
+            <line x1="0" y1="150" x2="500" y2="150" stroke="var(--border)" stroke-width="0.5" stroke-dasharray="4,4" />
+            
+            <!-- Trend Curve -->
+            <path id="sandbox-curve" d="" fill="none" stroke="url(#curve-gradient)" stroke-width="4" stroke-linecap="round" />
+            
+            <!-- Base Profile Dot (Blue) -->
+            <circle id="dot-base" cx="0" cy="0" r="8" fill="#3B82F6" stroke="#fff" stroke-width="2" style="transition: all 0.3s;" />
+            
+            <!-- Sandbox Simulated Dot (Green) -->
+            <circle id="dot-sim" cx="0" cy="0" r="9" fill="#10B981" stroke="#fff" stroke-width="2.5" style="filter: drop-shadow(0 0 6px #10B981); transition: all 0.1s;" />
+          </svg>
+          
+          <div style="display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--text-secondary); margin-top: 0.5rem;">
+            <span>⚠️ High Risk Profile</span>
+            <span>Optimal Wellness Profile ❇️</span>
+          </div>
+
+          <!-- Legend -->
+          <div style="display: flex; flex-wrap: wrap; gap: 1rem; justify-content: center; font-size: 0.75rem; margin-top: 0.8rem; border-top: 1px solid var(--border); padding-top: 0.6rem;">
+            <div style="display: flex; align-items: center; gap: 0.3rem;">
+              <span style="width: 10px; height: 10px; border-radius: 50%; background: #3B82F6; display: inline-block;"></span>
+              <span style="color: var(--text-secondary);">Your Base Health Profile</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.3rem;">
+              <span style="width: 10px; height: 10px; border-radius: 50%; background: #10B981; display: inline-block;"></span>
+              <span style="color: var(--text-secondary);">Sandbox Simulated Profile</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        // Controls
+        const ageSlider = document.getElementById('sb-age');
+        const ageVal = document.getElementById('sb-age-val');
+        const sexSelect = document.getElementById('sb-sex');
+        const childrenSlider = document.getElementById('sb-children');
+        const childrenVal = document.getElementById('sb-children-val');
+        const smokerSelect = document.getElementById('sb-smoker');
+        const bpsysSlider = document.getElementById('sb-bpsys');
+        const bpsysVal = document.getElementById('sb-bpsys-val');
+        const bpdiaSlider = document.getElementById('sb-bpdia');
+        const bpdiaVal = document.getElementById('sb-bpdia-val');
+        
+        const stepsSlider = document.getElementById('sb-steps');
+        const stepsVal = document.getElementById('sb-steps-val');
+        const rhrSlider = document.getElementById('sb-rhr');
+        const rhrVal = document.getElementById('sb-rhr-val');
+        const sleepdurSlider = document.getElementById('sb-sleepdur');
+        const sleepdurVal = document.getElementById('sb-sleepdur-val');
+        const sleepqualSlider = document.getElementById('sb-sleepqual');
+        const sleepqualVal = document.getElementById('sb-sleepqual-val');
+        const spo2Slider = document.getElementById('sb-spo2');
+        const spo2Val = document.getElementById('sb-spo2-val');
+        const waterSlider = document.getElementById('sb-water');
+        const waterVal = document.getElementById('sb-water-val');
+        const stressSlider = document.getElementById('sb-stress');
+        const stressVal = document.getElementById('sb-stress-val');
+        const activeSlider = document.getElementById('sb-active');
+        const activeVal = document.getElementById('sb-active-val');
+
+        // Outputs
+        const sandboxCost = document.getElementById('sandbox-predicted-cost');
+        const sandboxSavings = document.getElementById('sandbox-savings');
+        
+        // SVG
+        const dotBase = document.getElementById('dot-base');
+        const dotSim = document.getElementById('dot-sim');
+        const curvePath = document.getElementById('sandbox-curve');
+
+        // Base Values
+        const originalCost = parseFloat("{{ cost | replace(',', '') }}");
+        const originalAge = parseInt("{{ age }}");
+        const originalSmoker = "{{ smoker }}" === "yes";
+        const originalChildren = parseInt("{{ children if children else 0 }}");
+        const originalBPSys = parseInt("{{ bp_sys if bp_sys else 120 }}");
+        const originalBPDia = parseInt("{{ bp_dia if bp_dia else 80 }}");
+        const originalSteps = parseInt("{{ steps if steps else 8500 }}");
+        const originalHeartRate = parseInt("{{ heart_rate if heart_rate else 72 }}");
+        const originalSleepDur = parseFloat("{{ sleep_duration if sleep_duration else 7.5 }}");
+        const originalSleepQual = parseInt("{{ sleep_quality if sleep_quality else 80 }}");
+        const originalSpO2 = parseInt("{{ spo2 if spo2 else 98 }}");
+        const originalWater = parseFloat("{{ water_intake if water_intake else 2.5 }}");
+        const originalStress = parseInt("{{ stress_level if stress_level else 4 }}");
+        const originalActiveMins = parseInt("{{ active_mins if active_mins else 30 }}");
+
+        // Helper: calculate Health Score Index (0 to 100)
+        function getHealthIndex(age, smoker, bpSys, bpDia, steps, rhr, sleepDur, sleepQual, spo2, water, stress, active) {
+          let score = 100;
+          if (smoker) score -= 25;
+          if (age > 45) score -= (age - 45) * 0.3;
+          if (bpSys > 120) score -= (bpSys - 120) * 0.35;
+          if (bpDia > 80) score -= (bpDia - 80) * 0.5;
+          if (steps < 10000) score -= (10000 - steps) * 0.002;
+          if (rhr > 75) score -= (rhr - 75) * 0.3;
+          score -= Math.abs(sleepDur - 7.5) * 3;
+          if (sleepQual < 90) score -= (90 - sleepQual) * 0.15;
+          if (spo2 < 97) score -= (97 - spo2) * 2.5;
+          if (water < 3.0) score -= (3.0 - water) * 3;
+          if (stress > 3) score -= (stress - 3) * 2.5;
+          if (active < 45) score -= (45 - active) * 0.15;
+          return Math.max(10, Math.min(100, score));
+        }
+
+        // Draw trend curve
+        function drawCurve() {
+          let points = [];
+          for (let index = 10; index <= 100; index += 5) {
+            let x = (index / 100) * 500;
+            // Quadratic cost decay curve
+            let c = 2000 + 38000 * Math.pow(1 - (index/100), 1.7);
+            let y = 200 - ((c / 42000) * 200);
+            points.push(x + "," + y);
+          }
+          curvePath.setAttribute("d", "M " + points.join(" L "));
+        }
+
+        function runSimulation() {
+          // Current values
+          let cAge = parseInt(ageSlider.value);
+          let cSex = sexSelect.value;
+          let cChildren = parseInt(childrenSlider.value);
+          let cSmoker = smokerSelect.value === 'yes';
+          let cBPSys = parseInt(bpsysSlider.value);
+          let cBPDia = parseInt(bpdiaSlider.value);
+          
+          let cSteps = parseInt(stepsSlider.value);
+          let cRHR = parseInt(rhrSlider.value);
+          let cSleepDur = parseFloat(sleepdurSlider.value);
+          let cSleepQual = parseInt(sleepqualSlider.value);
+          let cSpO2 = parseInt(spo2Slider.value);
+          let cWater = parseFloat(waterSlider.value);
+          let cStress = parseInt(stressSlider.value);
+          let cActive = parseInt(activeSlider.value);
+
+          // Update text values
+          ageVal.textContent = cAge + " yrs";
+          childrenVal.textContent = cChildren;
+          bpsysVal.textContent = cBPSys + " mmHg";
+          bpdiaVal.textContent = cBPDia + " mmHg";
+          stepsVal.textContent = cSteps.toLocaleString() + " steps";
+          rhrVal.textContent = cRHR + " bpm";
+          sleepdurVal.textContent = cSleepDur + " hrs";
+          sleepqualVal.textContent = cSleepQual + "%";
+          spo2Val.textContent = cSpO2 + "%";
+          waterVal.textContent = cWater + " L";
+          stressVal.textContent = cStress + "/10";
+          activeVal.textContent = cActive + " mins";
+
+          // Calculate cost delta
+          let delta = 0;
+          delta += (cAge - originalAge) * 250;
+          delta += (cChildren - originalChildren) * 600;
+
+          if (originalSmoker && !cSmoker) delta -= 12500;
+          else if (!originalSmoker && cSmoker) delta += 12500;
+
+          delta += (cBPSys - originalBPSys) * 85;
+          delta += (cBPDia - originalBPDia) * 115;
+          delta -= (cSteps - originalSteps) * 0.45;
+          delta += (cRHR - originalHeartRate) * 80;
+          delta += (Math.abs(cSleepDur - 7.5) - Math.abs(originalSleepDur - 7.5)) * 400;
+          delta -= (cSleepQual - originalSleepQual) * 35;
+          if (cSpO2 < 95 && originalSpO2 >= 95) delta += 2500;
+          else if (cSpO2 >= 95 && originalSpO2 < 95) delta -= 2500;
+          delta -= (cWater - originalWater) * 250;
+          delta += (cStress - originalStress) * 750;
+          delta -= (cActive - originalActiveMins) * 35;
+
+          let newCost = Math.max(1800, originalCost + delta);
+          let savingsVal = originalCost - newCost;
+
+          sandboxCost.textContent = "₹" + newCost.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+          
+          if (savingsVal > 0) {
+            sandboxSavings.textContent = "Potential Saving: ₹" + savingsVal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            sandboxSavings.style.color = "#10B981";
+            sandboxSavings.style.background = "rgba(16,185,129,0.08)";
+            sandboxSavings.style.borderColor = "rgba(16,185,129,0.15)";
+          } else if (savingsVal < 0) {
+            sandboxSavings.textContent = "Cost Penalty: +₹" + Math.abs(savingsVal).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            sandboxSavings.style.color = "var(--danger)";
+            sandboxSavings.style.background = "rgba(239,68,68,0.08)";
+            sandboxSavings.style.borderColor = "rgba(239,68,68,0.15)";
+          } else {
+            sandboxSavings.textContent = "Potential Saving: ₹0.00";
+            sandboxSavings.style.color = "var(--text-secondary)";
+            sandboxSavings.style.background = "var(--bg-secondary)";
+            sandboxSavings.style.borderColor = "var(--border)";
+          }
+
+          // Update SVG Points
+          let baseIdx = getHealthIndex(originalAge, originalSmoker, originalBPSys, originalBPDia, originalSteps, originalHeartRate, originalSleepDur, originalSleepQual, originalSpO2, originalWater, originalStress, originalActiveMins);
+          let simIdx = getHealthIndex(cAge, cSmoker, cBPSys, cBPDia, cSteps, cRHR, cSleepDur, cSleepQual, cSpO2, cWater, cStress, cActive);
+
+          // Map base dot coordinates
+          let bx = (baseIdx / 100) * 500;
+          let by = 200 - ((originalCost / 42000) * 200);
+          dotBase.setAttribute("cx", bx);
+          dotBase.setAttribute("cy", by);
+
+          // Map sim dot coordinates
+          let sx = (simIdx / 100) * 500;
+          let sy = 200 - ((newCost / 42000) * 200);
+          dotSim.setAttribute("cx", sx);
+          dotSim.setAttribute("cy", sy);
+        }
+
+        // Attach Event Listeners
+        const allSliders = [
+          ageSlider, sexSelect, childrenSlider, smokerSelect, bpsysSlider, bpdiaSlider,
+          stepsSlider, rhrSlider, sleepdurSlider, sleepqualSlider, spo2Slider, waterSlider,
+          stressSlider, activeSlider
+        ];
+
+        allSliders.forEach(slider => {
+          slider.addEventListener('input', runSimulation);
+          slider.addEventListener('change', runSimulation);
+        });
+
+        // Initialize Sandbox
+        drawCurve();
+        runSimulation();
+      });
+      </script>
+      <!-- Recommended Health Insurance Plans -->
+      {% if insurance_plans %}
+        <div class="glass-card">
+          <h3 class="report-section-title">
+            <i class="fa-solid fa-shield-halved" style="color: var(--primary);"></i> Recommended Health Insurance Plans (Indian Market)
+          </h3>
+          <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1.5rem;">
+            Recommended health coverage plans based on your age, predicted annual expense of ₹{{ cost }}, and lifestyle parameters:
+          </p>
+          <!-- Insurance Calculator Controls (80D & Riders) -->
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 8px; padding: 1.2rem;">
+            <!-- Section 80D Tax savings -->
+            <div>
+              <h4 style="margin: 0 0 0.8rem 0; font-size: 0.9rem; color: var(--primary); font-weight: 800; display: flex; align-items: center; gap: 0.4rem;">
+                <i class="fa-solid fa-calculator"></i> Sec 80D Tax Savings Estimator
+              </h4>
+              <div style="display: flex; flex-direction: column; gap: 0.6rem; font-size: 0.8rem; text-align: left;">
+                <div>
+                  <label for="tax-slab" style="font-weight: 600; color: var(--text-primary); display: block; margin-bottom: 0.25rem;">Select Your Income Tax Slab:</label>
+                  <select id="tax-slab" class="form-control" style="width: 100%; font-size: 0.8rem; padding: 0.3rem;">
+                    <option value="0.10">10% Slab (Income 5L-10L)</option>
+                    <option value="0.20">20% Slab (Income 10L-15L)</option>
+                    <option value="0.30" selected>30% Slab (Income &gt; 15L)</option>
+                  </select>
+                </div>
+                <div style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; margin-top: 0.2rem;">
+                  <input type="checkbox" id="tax-parents" style="cursor: pointer;">
+                  <label for="tax-parents" style="cursor: pointer; color: var(--text-primary); margin-bottom: 0;">Include Senior Citizen Parents (+₹50,000 limit)</label>
+                </div>
+                <div style="margin-top: 0.5rem; padding: 0.5rem; background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.15); border-radius: 6px; text-align: center;">
+                  <span style="font-size: 0.75rem; color: var(--text-secondary); display: block;">Estimated Annual Cash Saved:</span>
+                  <strong style="font-size: 1.1rem; color: #10B981;" id="tax-savings-amount">₹2,850/year</strong>
+                </div>
+              </div>
+            </div>
+
+            <!-- Custom Add-on Riders -->
+            <div>
+              <h4 style="margin: 0 0 0.8rem 0; font-size: 0.9rem; color: var(--primary); font-weight: 800; display: flex; align-items: center; gap: 0.4rem;">
+                <i class="fa-solid fa-circle-plus"></i> Customize Quotes (Add-on Riders)
+              </h4>
+              <div style="display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.8rem; text-align: left;">
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                  <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <input type="checkbox" id="rider-critical" class="rider-checkbox" value="1800" style="cursor: pointer;">
+                    <label for="rider-critical" style="cursor: pointer; color: var(--text-primary); margin-bottom: 0;">Critical Illness Cover</label>
+                  </div>
+                  <span style="color: var(--text-secondary); font-size: 0.75rem;">+₹1,800/yr</span>
+                </div>
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                  <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <input type="checkbox" id="rider-opd" class="rider-checkbox" value="1500" style="cursor: pointer;">
+                    <label for="rider-opd" style="cursor: pointer; color: var(--text-primary); margin-bottom: 0;">OPD & Dental Care</label>
+                  </div>
+                  <span style="color: var(--text-secondary); font-size: 0.75rem;">+₹1,500/yr</span>
+                </div>
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                  <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <input type="checkbox" id="rider-maternity" class="rider-checkbox" value="3000" style="cursor: pointer;">
+                    <label for="rider-maternity" style="cursor: pointer; color: var(--text-primary); margin-bottom: 0;">Maternity Cover</label>
+                  </div>
+                  <span style="color: var(--text-secondary); font-size: 0.75rem;">+₹3,000/yr</span>
+                </div>
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                  <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <input type="checkbox" id="rider-global" class="rider-checkbox" value="4500" style="cursor: pointer;">
+                    <label for="rider-global" style="cursor: pointer; color: var(--text-primary); margin-bottom: 0;">Global Treatment Cover</label>
+                  </div>
+                  <span style="color: var(--text-secondary); font-size: 0.75rem;">+₹4,500/yr</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem;">
+            {% for plan in insurance_plans %}
+              <div class="glass-card" style="border: 1px solid var(--border); padding: 1.5rem; display: flex; flex-direction: column; justify-content: space-between; position: relative;">
+                <div>
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                    <h4 style="margin: 0; font-size: 1.2rem; font-weight: 800; color: var(--text-primary);">{{ plan.company }}</h4>
+                    <span style="font-size: 0.75rem; font-weight: 700; padding: 0.25rem 0.6rem; border-radius: 20px; background: rgba(59, 130, 246, 0.15); color: var(--primary);">
+                      {{ plan.suitability_score }}% Match
+                    </span>
+                  </div>
+                  <h5 style="margin: 0 0 1rem 0; font-size: 0.95rem; font-weight: 600; color: var(--primary);">{{ plan.plan_name }}</h5>
+                  
+                  <div style="margin-bottom: 1rem; padding: 0.8rem; background: var(--bg-secondary); border-radius: 6px; display: flex; justify-content: space-between;">
+                    <div>
+                      <span style="font-size: 0.75rem; color: var(--text-secondary); display: block;">Est. Annual Premium</span>
+                      <span class="policy-premium" data-base-premium="{{ plan.premium_annual }}" style="font-size: 1.1rem; font-weight: 700; color: var(--success);">₹{{ plan.premium_annual }}/yr</span>
+                    </div>
+                    <div>
+                      <span style="font-size: 0.75rem; color: var(--text-secondary); display: block;">Sum Insured</span>
+                      <span style="font-size: 1rem; font-weight: 700; color: var(--text-primary);">{{ plan.sum_insured }}</span>
+                    </div>
+                  </div>
+
+                  <!-- IRDAI Trust Metrics -->
+                  <div style="margin-top: 0.8rem; margin-bottom: 0.8rem; display: flex; gap: 0.4rem; flex-wrap: wrap;">
+                    <span style="font-size: 0.7rem; padding: 0.2rem 0.4rem; background: rgba(59,130,246,0.06); border: 1px solid var(--border); border-radius: 4px; color: var(--text-primary);">
+                      <strong>CSR:</strong> {% if plan.company == 'HDFC ERGO' %}99.1%{% elif plan.company == 'Niva Bupa' %}96.2%{% elif plan.company == 'Care Health' %}95.2%{% else %}98.2%{% endif %}
+                    </span>
+                    <span style="font-size: 0.7rem; padding: 0.2rem 0.4rem; background: rgba(59,130,246,0.06); border: 1px solid var(--border); border-radius: 4px; color: var(--text-primary);">
+                      <strong>Network:</strong> {% if plan.company == 'HDFC ERGO' %}12,000+{% elif plan.company == 'Niva Bupa' %}9,500+{% elif plan.company == 'Care Health' %}8,300+{% else %}14,000+{% endif %} Hosp
+                    </span>
+                    <span style="font-size: 0.7rem; padding: 0.2rem 0.4rem; background: rgba(59,130,246,0.06); border: 1px solid var(--border); border-radius: 4px; color: var(--text-primary);">
+                      <strong>Solvency:</strong> {% if plan.company == 'HDFC ERGO' %}1.89{% elif plan.company == 'Niva Bupa' %}1.72{% elif plan.company == 'Care Health' %}1.65{% else %}1.68{% endif %}
+                    </span>
+                  </div>
+
+                  <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 1rem;">
+                    <div style="margin-bottom: 0.25rem;"><strong>Policy Term:</strong> {{ plan.term }}</div>
+                    <div><strong>Waiting Period:</strong> {{ plan.waiting_period }}</div>
+                  </div>
+
+                  <!-- Copayment Clause -->
+                  <div style="margin-bottom: 0.8rem; font-size: 0.8rem; color: var(--text-secondary);">
+                    <strong>Co-payment Clause:</strong> 
+                    <span style="font-weight: 700; color: var(--text-primary); display: block; margin-top: 0.15rem; background: var(--bg-secondary); padding: 0.25rem 0.5rem; border-radius: 4px; border-left: 3px solid var(--primary);">
+                      {{ plan.copayment }}
+                    </span>
+                  </div>
+
+                  <!-- Branch & Corporate Offices -->
+                  <div style="margin-bottom: 1rem; padding: 0.6rem; background: var(--bg-secondary); border-radius: 6px; font-size: 0.75rem; text-align: left; color: var(--text-secondary); line-height: 1.4; border-top: 1px solid var(--border);">
+                    <div style="margin-bottom: 0.25rem;"><i class="fa-solid fa-globe" style="color: var(--primary); margin-right: 0.25rem;"></i> <strong>Website:</strong> <a href="https://{{ plan.website }}" target="_blank" style="color: var(--primary); text-decoration: underline;">{{ plan.website }}</a></div>
+                    <div style="margin-bottom: 0.25rem;"><i class="fa-solid fa-building" style="color: var(--primary); margin-right: 0.25rem;"></i> <strong>Headquarters HQ:</strong> {{ plan.head_office }}</div>
+                    <div><i class="fa-solid fa-map-location-dot" style="color: var(--primary); margin-right: 0.25rem;"></i> <strong>Local Branch Office:</strong> {{ plan.branch_office }}</div>
+                  </div>
+
+                  <!-- Pros (Benefits) -->
+                  <div style="margin-bottom: 0.8rem; text-align: left;">
+                    <strong style="color: #10B981; font-size: 0.8rem; display: block; margin-bottom: 0.3rem;"><i class="fa-solid fa-circle-check"></i> Key Benefits (Pros):</strong>
+                    <ul style="list-style: none; padding-left: 0; margin: 0; font-size: 0.8rem; color: var(--text-secondary); line-height: 1.4;">
+                      {% for pro in plan.pros %}
+                        <li style="margin-bottom: 0.3rem; display: flex; align-items: flex-start; gap: 0.3rem;">
+                          <span style="color: #10B981; font-weight: 700;">+</span> <span>{{ pro }}</span>
+                        </li>
+                      {% endfor %}
+                    </ul>
+                  </div>
+
+                  <!-- Cons (Not Benefits / Limitations) -->
+                  <div style="text-align: left;">
+                    <strong style="color: var(--danger); font-size: 0.8rem; display: block; margin-bottom: 0.3rem;"><i class="fa-solid fa-circle-xmark"></i> Limitations & Exclusions (Cons):</strong>
+                    <ul style="list-style: none; padding-left: 0; margin: 0; font-size: 0.8rem; color: var(--text-secondary); line-height: 1.4;">
+                      {% for con in plan.cons %}
+                        <li style="margin-bottom: 0.3rem; display: flex; align-items: flex-start; gap: 0.3rem;">
+                          <span style="color: var(--danger); font-weight: 700;">-</span> <span>{{ con }}</span>
+                        </li>
+                      {% endfor %}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+
+        <script>
+        document.addEventListener('DOMContentLoaded', function() {
+          const riderCheckboxes = document.querySelectorAll('.rider-checkbox');
+          const premiums = document.querySelectorAll('.policy-premium');
+          const taxSlabSelect = document.getElementById('tax-slab');
+          const taxParentsCheckbox = document.getElementById('tax-parents');
+          const taxSavingsAmount = document.getElementById('tax-savings-amount');
+
+          function calculateTaxSavings() {
+            // Calculate average current premium
+            let totalPremium = 0;
+            premiums.forEach(p => {
+              const base = parseFloat(p.getAttribute('data-base-premium'));
+              totalPremium += base;
+            });
+            const avgBasePremium = totalPremium / premiums.length;
+
+            // Add rider premiums
+            let riderTotal = 0;
+            riderCheckboxes.forEach(cb => {
+              if (cb.checked) {
+                riderTotal += parseFloat(cb.value);
+              }
+            });
+            const currentAvgPremium = avgBasePremium + riderTotal;
+
+            // Indian Tax Sec 80D Deductions limits:
+            // Max 25,000 for self/spouse/kids.
+            // Plus Max 50,000 for parents if parents are senior citizens (or 25,000 if parents under 60).
+            let selfLimit = 25000;
+            let parentsLimit = taxParentsCheckbox.checked ? 50000 : 0;
+
+            let selfDeduction = Math.min(currentAvgPremium, selfLimit);
+            let parentsDeduction = parentsLimit; // Mock estimated parents premium contribution
+
+            let totalDeduction = selfDeduction + parentsDeduction;
+            const slabRate = parseFloat(taxSlabSelect.value);
+            const savedCash = totalDeduction * slabRate;
+
+            taxSavingsAmount.textContent = "₹" + Math.round(savedCash).toLocaleString('en-IN') + "/year";
+          }
+
+          function updatePremiums() {
+            let riderTotal = 0;
+            riderCheckboxes.forEach(cb => {
+              if (cb.checked) {
+                riderTotal += parseFloat(cb.value);
+              }
+            });
+
+            premiums.forEach(p => {
+              const base = parseFloat(p.getAttribute('data-base-premium'));
+              const total = base + riderTotal;
+              p.textContent = "₹" + total.toLocaleString('en-IN') + "/yr";
+            });
+
+            calculateTaxSavings();
+          }
+
+          riderCheckboxes.forEach(cb => {
+            cb.addEventListener('change', updatePremiums);
+          });
+
+          taxSlabSelect.addEventListener('change', calculateTaxSavings);
+          taxParentsCheckbox.addEventListener('change', calculateTaxSavings);
+
+          // Run initial execution
+          calculateTaxSavings();
+        });
+        </script>
+      {% endif %}
+
+      <!-- Interactive Health AI Chatbot -->
+      <div class="glass-card" style="padding: 1.5rem; margin-top: 1.5rem;">
+        <h3 class="report-section-title">
+          <i class="fa-solid fa-robot" style="color: var(--primary);"></i> PredictMedix AI Assistant
+        </h3>
+        <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 1rem;">
+          Select a category-specific FAQ from the list below to get instant clinical and project explanations:
+        </p>
+        
+        <!-- Chat Area -->
+        <div id="chat-box" style="height: 180px; overflow-y: auto; background: var(--bg-secondary); border-radius: 8px; padding: 0.8rem; margin-bottom: 1rem; border: 1px solid var(--border); font-size: 0.85rem; display: flex; flex-direction: column; gap: 0.8rem; text-align: left;">
+          <div style="align-self: flex-start; background: var(--glass-bg); padding: 0.6rem; border-radius: 8px 8px 8px 0; border: 1px solid var(--border); max-width: 85%;">
+            Hello {{ name }}! Choose an FAQ question from the list below to understand your prediction report.
+          </div>
+        </div>
+
+        <!-- Chat FAQ Dropdown Selector -->
+        <div style="margin-top: 1rem; text-align: left;">
+          <label for="faq-selector" style="font-size: 0.85rem; font-weight: 700; color: var(--text-primary); display: block; margin-bottom: 0.5rem;">Ask AI about Project Metrics & Calculations:</label>
+          <select id="faq-selector" class="form-control" style="width: 100%; font-size: 0.85rem; padding: 0.5rem; border-radius: 8px; cursor: pointer;">
+            <option value="" disabled selected>-- Select a Question --</option>
+            
+            <optgroup label="XGBoost Model & SHAP Explanations">
+              <option value="ml_predict">How does the ML model predict my annual cost?</option>
+              <option value="baseline_cost">What does the 'Baseline average cost' mean?</option>
+              <option value="shap_exps">What are SHAP values?</option>
+              <option value="smoking_loading">Why does smoking increase cost so heavily?</option>
+              <option value="age_loading">How does age affect the cost?</option>
+            </optgroup>
+            
+            <optgroup label="BMI, Weight & Lifestyle Impact">
+              <option value="bmi_calc">How is BMI calculated?</option>
+              <option value="weight_kg">Why is my weight converted to kilograms?</option>
+              <option value="bmi_cost">Does a high BMI directly increase cost?</option>
+              <option value="sedentary_lifestyle">How does sedentary lifestyle affect charges?</option>
+              <option value="lose_weight">Can losing weight lower my insurance cost?</option>
+            </optgroup>
+            
+            <optgroup label="Smart Wearables & Health Score">
+              <option value="health_score">What does the 0-100 Health Score mean?</option>
+              <option value="bp_high">Why is my blood pressure categorized as High BP?</option>
+              <option value="rhr_normal">What is a normal Resting Heart Rate?</option>
+              <option value="sleep_quality">Why is sleep duration and quality important?</option>
+              <option value="spo2_val">What does SpO2 measure?</option>
+            </optgroup>
+            
+            <optgroup label="Indian Insurance & Hospital System">
+              <option value="insurance_choice">Which Indian health insurance plan is best for me?</option>
+              <option value="waiting_period">What is the standard pre-existing waiting period in India?</option>
+              <option value="sum_insured">Why is Sum Insured suggested as 5L vs 10L?</option>
+              <option value="govt_hospitals">What is a Block Level government hospital?</option>
+              <option value="pharmacy_locator">What are the medical store locator benefits?</option>
+            </optgroup>
+          </select>
+        </div>
+      </div>
+
+      <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        const chatBox = document.getElementById('chat-box');
+        const faqSelector = document.getElementById('faq-selector');
+
+        const faqAnswers = {
+          ml_predict: {
+            q: "How does the ML model predict my annual cost?",
+            a: "We train XGBoost and Random Forest regressions on real-world demographic and healthcare expense datasets to forecast costs."
+          },
+          baseline_cost: {
+            q: "What does the 'Baseline average cost' mean?",
+            a: "It represents the start value (intercept) before individual adjustments. Personal factors either add or subtract from this baseline."
+          },
+          shap_exps: {
+            q: "What are SHAP values?",
+            a: "SHAP (SHapley Additive exPlanations) values explain the exact mathematical impact of each input feature on the final cost prediction."
+          },
+          smoking_loading: {
+            q: "Why does smoking increase cost so heavily?",
+            a: "Smoking is medically linked to chronic respiratory and cardiac risks, which mathematically increases actuarial risk premium loads."
+          },
+          age_loading: {
+            q: "How does age affect the cost?",
+            a: "As age increases, cellular wear-and-tear increases the statistical likelihood of medical claims, raising estimated charges."
+          },
+          bmi_calc: {
+            q: "How is BMI calculated?",
+            a: "BMI is weight in kilograms divided by height in meters squared: BMI = kg/m²."
+          },
+          weight_kg: {
+            q: "Why is my weight converted to kilograms?",
+            a: "The machine learning model is trained on standardized metric values to guarantee prediction accuracy."
+          },
+          bmi_cost: {
+            q: "Does a high BMI directly increase cost?",
+            a: "Yes, a BMI above 25 (overweight) or 30 (obese) increases risk for metabolic disorders, adding premium surcharges."
+          },
+          sedentary_lifestyle: {
+            q: "How does sedentary lifestyle affect charges?",
+            a: "No physical activity (sedentary) increases metabolic risk load, while active lifestyles earn premium discounts."
+          },
+          lose_weight: {
+            q: "Can losing weight lower my insurance cost?",
+            a: "Absolutely. Simulating a lower weight reduces your BMI category, which slashes your premium loading significantly."
+          },
+          health_score: {
+            q: "What does the 0-100 Health Score mean?",
+            a: "It evaluates your steps, BP, resting heart rate, sleep quality, and active minutes against clinical benchmarks."
+          },
+          bp_high: {
+            q: "Why is my blood pressure categorized as High BP?",
+            a: "A systolic BP > 130 mmHg or diastolic > 85 mmHg indicates pre-hypertension/hypertension, which flags risk."
+          },
+          rhr_normal: {
+            q: "What is a normal Resting Heart Rate?",
+            a: "Typical healthy resting heart rates range between 50 to 80 beats per minute (bpm). Values > 100 indicate high stress/risk."
+          },
+          sleep_quality: {
+            q: "Why is sleep duration and quality important?",
+            a: "Quality sleep of 7-8 hours allows neural and cardiovascular recovery, directly boosting your biological health score."
+          },
+          spo2_val: {
+            q: "What does SpO2 measure?",
+            a: "SpO2 measures the percentage of oxygen-carrying hemoglobin in the blood. Healthy baseline is 95% to 100%."
+          },
+          insurance_choice: {
+            q: "Which Indian health insurance plan is best for me?",
+            a: "Based on your clinical profile, the best matched plan (e.g. HDFC Ergo Optima Secure or Care Supreme) is highlighted at the bottom of the page."
+          },
+          waiting_period: {
+            q: "What is the standard pre-existing waiting period in India?",
+            a: "Usually 2 to 4 years. Pre-existing diseases (like diabetes/BP) must be declared to avoid claim rejection."
+          },
+          sum_insured: {
+            q: "Why is Sum Insured suggested as 5L vs 10L?",
+            a: "5 Lakhs is recommended for low-risk individuals. 10 Lakhs is advised for high-risk patients to cover critical hospital costs."
+          },
+          govt_hospitals: {
+            q: "What is a Block Level government hospital?",
+            a: "Under the Indian public health system, Block PHCs and Community Health Centers (CHCs) offer subsidized basic primary care."
+          },
+          pharmacy_locator: {
+            q: "What are the medical store locator benefits?",
+            a: "It lists public Jan Aushadhi Kendras (generic medicines at 50-90% discount) and private pharmacies near your location."
+          }
+        };
+
+        function appendMessage(text, sender) {
+          const msg = document.createElement('div');
+          if (sender === 'user') {
+            msg.style.cssText = "align-self: flex-end; background: var(--primary); color: white; padding: 0.6rem; border-radius: 8px 8px 0 8px; max-width: 85%; margin-top: 5px;";
+          } else {
+            msg.style.cssText = "align-self: flex-start; background: var(--glass-bg); padding: 0.6rem; border-radius: 8px 8px 8px 0; border: 1px solid var(--border); max-width: 85%; margin-top: 5px;";
+          }
+          msg.textContent = text;
+          chatBox.appendChild(msg);
+          chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        faqSelector.addEventListener('change', function() {
+          const key = faqSelector.value;
+          if (!key || !faqAnswers[key]) return;
+
+          const item = faqAnswers[key];
+          
+          // Append User Question
+          appendMessage(item.q, 'user');
+
+          // Wait 300ms and reply
+          setTimeout(() => {
+            appendMessage(item.a, 'ai');
+          }, 300);
+
+          // Reset selector
+          faqSelector.value = "";
+        });
+      });
+      </script>
+
+    </div>
+
+  </div>
+{% endif %}
+{% endblock %}

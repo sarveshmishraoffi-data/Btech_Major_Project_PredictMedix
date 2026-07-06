@@ -1,0 +1,16 @@
+numpy
+pandas
+scikit-learn
+matplotlib
+seaborn
+xgboost
+flask
+joblib
+PyJWT
+pymongo
+flask-login
+flask-mail
+python-dotenv
+xhtml2pdf
+shap
+gunicorn

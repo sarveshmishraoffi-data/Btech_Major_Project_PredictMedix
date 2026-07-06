@@ -1,0 +1,346 @@
+{% extends "base.html" %}
+
+{% block title %}PredictMedix - Home{% endblock %}
+
+{% block content %}
+{% if not current_user.is_authenticated %}
+  <!-- Unauthenticated Landing Page -->
+  <section class="hero-section">
+    <div class="hero-content">
+      <h1>Predict Your Medical Insurance Costs Instantly</h1>
+      <p>Using advanced Machine Learning models, PredictMedix estimates individual healthcare charges based on your lifestyle, age, BMI, and other demographic factors.</p>
+      <div class="hero-ctas">
+        <a href="{{ url_for('signup') }}" class="btn btn-primary">Get Started <i class="fa-solid fa-arrow-right"></i></a>
+        <a href="{{ url_for('about') }}" class="btn btn-secondary">Learn More</a>
+      </div>
+    </div>
+    <div class="hero-visual">
+      <div class="hero-glow"></div>
+      <img src="{{ url_for('static', filename='images/hero_health.jpg') }}" alt="Health Analysis Illustration" style="max-width: 100%; height: auto; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
+    </div>
+  </section>
+
+  <!-- Feature Highlights -->
+  <section class="features-grid">
+    <div class="glass-card feature-card">
+      <div class="feature-icon"><i class="fa-solid fa-brain"></i></div>
+      <h3>Machine Learning Insights</h3>
+      <p style="color: var(--text-secondary); margin-top: 0.5rem; font-size: 0.95rem;">Empowered by gradient boosting & random forest regressions trained on real-world medical datasets.</p>
+    </div>
+    <div class="glass-card feature-card">
+      <div class="feature-icon"><i class="fa-solid fa-chart-line"></i></div>
+      <h3>Explainable AI (SHAP)</h3>
+      <p style="color: var(--text-secondary); margin-top: 0.5rem; font-size: 0.95rem;">Understand how each factor—such as smoking status or BMI—increases or decreases your health expense.</p>
+    </div>
+    <div class="glass-card feature-card">
+      <div class="feature-icon"><i class="fa-solid fa-file-pdf"></i></div>
+      <h3>Instant PDF Reports</h3>
+      <p style="color: var(--text-secondary); margin-top: 0.5rem; font-size: 0.95rem;">Download a fully detailed medical charges estimation report in PDF format to share with your provider.</p>
+    </div>
+  </section>
+{% else %}
+  <!-- Authenticated Predictor Form -->
+  <div class="predictor-header">
+    <h2>Medical Cost Estimator</h2>
+    <p style="color: var(--text-secondary);">Fill in your details below to predict your annual medical costs.</p>
+  </div>
+
+  <div style="max-width: 750px; margin: 0 auto;">
+    {% if prediction_text %}
+      <div class="flash-message danger" style="margin-bottom: 2rem;">
+        <span><i class="fa-solid fa-triangle-exclamation"></i> {{ prediction_text }}</span>
+      </div>
+    {% endif %}
+
+    <div class="glass-card">
+      <form action="{{ url_for('predict') }}" method="POST">
+        
+        <div class="form-row">
+          <!-- Age Field -->
+          <div class="form-group">
+            <label for="age" class="form-label">Age (Years)</label>
+            <input type="number" id="age" name="age" class="form-control" min="1" max="120" required placeholder="e.g. 28">
+          </div>
+
+          <!-- Gender Field -->
+          <div class="form-group">
+            <label for="sex" class="form-label">Gender</label>
+            <select id="sex" name="sex" class="form-control" required>
+              <option value="" disabled selected>Select Gender</option>
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <!-- Weight Field with Unit -->
+          <div class="form-group">
+            <label for="weight" class="form-label">Weight</label>
+            <div style="display: flex; gap: 0.5rem;">
+              <input type="number" id="weight" name="weight" class="form-control" step="0.1" min="1" max="1000" required placeholder="e.g. 70" style="flex: 2;">
+              <select name="weight_unit" class="form-control" style="flex: 1; min-width: 80px;">
+                <option value="kg" selected>kg</option>
+                <option value="lbs">lbs</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Height Field with Unit -->
+          <div class="form-group">
+            <label for="height" class="form-label">Height</label>
+            <div style="display: flex; gap: 0.5rem;">
+              <input type="number" id="height" name="height" class="form-control" step="0.1" min="1" max="500" required placeholder="e.g. 175" style="flex: 2;">
+              <select name="height_unit" class="form-control" style="flex: 1; min-width: 80px;">
+                <option value="cm" selected>cm</option>
+                <option value="m">meters</option>
+                <option value="in">inches</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Dependents Field -->
+          <div class="form-group">
+            <label for="children" class="form-label">Number of Children (Dependents)</label>
+            <input type="number" id="children" name="children" class="form-control" min="0" max="15" required placeholder="e.g. 0">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <!-- Smoker Field -->
+          <div class="form-group">
+            <label for="smoker" class="form-label">Do you smoke?</label>
+            <select id="smoker" name="smoker" class="form-control" required>
+              <option value="" disabled selected>Select smoking status</option>
+              <option value="yes">Yes</option>
+              <option value="no">No</option>
+            </select>
+          </div>
+
+          <!-- Region Field -->
+          <div class="form-group">
+            <label for="region" class="form-label">Geographical Region (State / UT of India)</label>
+            <select id="region" name="region" class="form-control" required>
+              <option value="" disabled selected>Select State / UT</option>
+              <!-- 28 States -->
+              <option value="Andhra Pradesh">Andhra Pradesh</option>
+              <option value="Arunachal Pradesh">Arunachal Pradesh</option>
+              <option value="Assam">Assam</option>
+              <option value="Bihar">Bihar</option>
+              <option value="Chhattisgarh">Chhattisgarh</option>
+              <option value="Goa">Goa</option>
+              <option value="Gujarat">Gujarat</option>
+              <option value="Haryana">Haryana</option>
+              <option value="Himachal Pradesh">Himachal Pradesh</option>
+              <option value="Jharkhand">Jharkhand</option>
+              <option value="Karnataka">Karnataka</option>
+              <option value="Kerala">Kerala</option>
+              <option value="Madhya Pradesh">Madhya Pradesh</option>
+              <option value="Maharashtra">Maharashtra</option>
+              <option value="Manipur">Manipur</option>
+              <option value="Meghalaya">Meghalaya</option>
+              <option value="Mizoram">Mizoram</option>
+              <option value="Nagaland">Nagaland</option>
+              <option value="Odisha">Odisha</option>
+              <option value="Punjab">Punjab</option>
+              <option value="Rajasthan">Rajasthan</option>
+              <option value="Sikkim">Sikkim</option>
+              <option value="Tamil Nadu">Tamil Nadu</option>
+              <option value="Telangana">Telangana</option>
+              <option value="Tripura">Tripura</option>
+              <option value="Uttar Pradesh">Uttar Pradesh</option>
+              <option value="Uttarakhand">Uttarakhand</option>
+              <option value="West Bengal">West Bengal</option>
+              <!-- 8 Union Territories -->
+              <option value="Andaman and Nicobar Islands">Andaman and Nicobar Islands</option>
+              <option value="Chandigarh">Chandigarh</option>
+              <option value="Dadra and Nagar Haveli and Daman and Diu">Dadra and Nagar Haveli and Daman and Diu</option>
+              <option value="Delhi">Delhi (NCT)</option>
+              <option value="Jammu and Kashmir">Jammu and Kashmir</option>
+              <option value="Ladakh">Ladakh</option>
+              <option value="Lakshadweep">Lakshadweep</option>
+              <option value="Puducherry">Puducherry</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Additional Health Parameters -->
+        <div class="form-row" style="margin-top: 1.5rem;">
+          <!-- Hypertension Field -->
+          <div class="form-group">
+            <label for="hypertension" class="form-label">Do you have Hypertension (High BP)?</label>
+            <select id="hypertension" name="hypertension" class="form-control" required>
+              <option value="no" selected>No</option>
+              <option value="yes">Yes</option>
+            </select>
+          </div>
+
+          <!-- Diabetes Field -->
+          <div class="form-group">
+            <label for="diabetes" class="form-label">Do you have Diabetes (High Blood Sugar)?</label>
+            <select id="diabetes" name="diabetes" class="form-control" required>
+              <option value="no" selected>No</option>
+              <option value="yes">Yes</option>
+            </select>
+          </div>
+
+          <!-- Physical Activity Field -->
+          <div class="form-group">
+            <label for="activity_level" class="form-label">Physical Activity Level</label>
+            <select id="activity_level" name="activity_level" class="form-control" required>
+              <option value="sedentary">Sedentary (No exercise)</option>
+              <option value="lightly_active" selected>Lightly Active (1-2 days/week)</option>
+              <option value="moderately_active">Moderately Active (3-5 days/week)</option>
+              <option value="highly_active">Highly Active (6-7 days/week)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Collapsible Wearable & Lifestyle Data -->
+        <details class="glass-card" style="margin-top: 2rem; padding: 1.5rem; border: 1px solid var(--border); border-radius: 12px; cursor: pointer;">
+          <summary style="font-weight: 700; font-size: 1.1rem; color: var(--primary); display: flex; align-items: center; justify-content: space-between; outline: none; list-style: none;">
+            <span><i class="fa-solid fa-clock-rotate-left"></i> Smart Wearable & Lifestyle Metrics (Optional)</span>
+            <span style="font-size: 0.85rem; padding: 0.25rem 0.5rem; background: rgba(59,130,246,0.15); border-radius: 4px; color: var(--primary);">Expand to view</span>
+          </summary>
+          
+          <div style="margin-top: 1.5rem; cursor: default;" onclick="event.stopPropagation();">
+            <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1.5rem;">
+              Fill in your smart wearable data or daily lifestyle factors to generate an advanced AI Health & Lifestyle Score and customized wellness tips.
+            </p>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.2rem;">
+              <!-- Step Count -->
+              <div class="form-group">
+                <label for="step_count" class="form-label" style="font-size: 0.85rem;">Daily Step Count</label>
+                <input type="number" id="step_count" name="step_count" class="form-control" min="0" max="100000" value="8500">
+              </div>
+
+              <!-- Blood Pressure -->
+              <div class="form-group">
+                <label class="form-label" style="font-size: 0.85rem;">Blood Pressure (mmHg)</label>
+                <div style="display: flex; gap: 0.4rem; align-items: center;">
+                  <input type="number" name="bp_sys" class="form-control" min="50" max="250" value="120" placeholder="Sys" style="padding: 0.4rem;">
+                  <span style="color: var(--text-secondary);">/</span>
+                  <input type="number" name="bp_dia" class="form-control" min="30" max="150" value="80" placeholder="Dia" style="padding: 0.4rem;">
+                </div>
+              </div>
+
+              <!-- Heart Rate -->
+              <div class="form-group">
+                <label for="heart_rate" class="form-label" style="font-size: 0.85rem;">Resting Heart Rate (bpm)</label>
+                <input type="number" id="heart_rate" name="heart_rate" class="form-control" min="30" max="200" value="68">
+              </div>
+
+              <!-- Sleep Duration -->
+              <div class="form-group">
+                <label for="sleep_duration" class="form-label" style="font-size: 0.85rem;">Sleep Duration (Hours)</label>
+                <input type="number" id="sleep_duration" name="sleep_duration" class="form-control" step="0.1" min="0" max="24" value="7.5">
+              </div>
+
+              <!-- Sleep Quality -->
+              <div class="form-group">
+                <label for="sleep_quality" class="form-label" style="font-size: 0.85rem;">Sleep Quality (%)</label>
+                <input type="number" id="sleep_quality" name="sleep_quality" class="form-control" min="0" max="100" value="88">
+              </div>
+
+              <!-- SpO2 -->
+              <div class="form-group">
+                <label for="spo2" class="form-label" style="font-size: 0.85rem;">Blood Oxygen (SpO₂ %)</label>
+                <input type="number" id="spo2" name="spo2" class="form-control" min="50" max="100" value="98">
+              </div>
+
+              <!-- Active Minutes -->
+              <div class="form-group">
+                <label for="active_mins" class="form-label" style="font-size: 0.85rem;">Active Minutes / Day</label>
+                <input type="number" id="active_mins" name="active_mins" class="form-control" min="0" max="1440" value="50">
+              </div>
+
+              <!-- Calories Burned -->
+              <div class="form-group">
+                <label for="calories_burned" class="form-label" style="font-size: 0.85rem;">Calories Burned (kcal)</label>
+                <input type="number" id="calories_burned" name="calories_burned" class="form-control" min="0" max="20000" value="2200">
+              </div>
+
+              <!-- Water Intake -->
+              <div class="form-group">
+                <label for="water_intake" class="form-label" style="font-size: 0.85rem;">Water Intake (Liters)</label>
+                <input type="number" id="water_intake" name="water_intake" class="form-control" step="0.1" min="0" max="20" value="2.5">
+              </div>
+
+              <!-- Stress Level -->
+              <div class="form-group">
+                <label for="stress_level" class="form-label" style="font-size: 0.85rem;">Stress Level (1 - 10)</label>
+                <input type="number" id="stress_level" name="stress_level" class="form-control" min="1" max="10" value="3">
+              </div>
+
+              <!-- Alcohol Consumption -->
+              <div class="form-group">
+                <label for="alcohol" class="form-label" style="font-size: 0.85rem;">Alcohol Consumption</label>
+                <select id="alcohol" name="alcohol" class="form-control">
+                  <option value="none" selected>None / Occasional</option>
+                  <option value="light">Light</option>
+                  <option value="moderate">Moderate</option>
+                  <option value="heavy">Heavy</option>
+                </select>
+              </div>
+
+              <!-- Sugar Intake -->
+              <div class="form-group">
+                <label for="sugar" class="form-label" style="font-size: 0.85rem;">Daily Sugar Intake (g)</label>
+                <input type="number" id="sugar" name="sugar" class="form-control" min="0" max="500" value="28">
+              </div>
+
+              <!-- Salt Intake -->
+              <div class="form-group">
+                <label for="salt" class="form-label" style="font-size: 0.85rem;">Daily Salt Intake (g)</label>
+                <input type="number" id="salt" name="salt" class="form-control" min="0" max="100" value="5">
+              </div>
+
+              <!-- Sitting Time -->
+              <div class="form-group">
+                <label for="sitting_time" class="form-label" style="font-size: 0.85rem;">Sitting Time (Hours)</label>
+                <input type="number" id="sitting_time" name="sitting_time" class="form-control" min="0" max="24" value="6">
+              </div>
+
+              <!-- Exercise Frequency -->
+              <div class="form-group">
+                <label for="exercise_freq" class="form-label" style="font-size: 0.85rem;">Exercise (Days / Week)</label>
+                <input type="number" id="exercise_freq" name="exercise_freq" class="form-control" min="0" max="7" value="5">
+              </div>
+
+              <!-- HRV -->
+              <div class="form-group">
+                <label for="hrv" class="form-label" style="font-size: 0.85rem;">Heart Rate Var. (HRV ms)</label>
+                <input type="number" id="hrv" name="hrv" class="form-control" min="5" max="300" value="58">
+              </div>
+
+              <!-- Respiratory Rate -->
+              <div class="form-group">
+                <label for="resp_rate" class="form-label" style="font-size: 0.85rem;">Respiratory Rate (breaths/m)</label>
+                <input type="number" id="resp_rate" name="resp_rate" class="form-control" min="5" max="50" value="16">
+              </div>
+            </div>
+          </div>
+        </details>
+
+        <!-- Future Prediction Checkbox -->
+        <div class="form-group" style="margin-top: 1rem;">
+          <div class="form-check">
+            <input type="checkbox" id="future_prediction" name="future_prediction" value="yes" class="form-check-input">
+            <label for="future_prediction" class="form-label" style="display: inline; margin-bottom: 0; cursor: pointer;">
+              Include 5-year projections (estimating cost increases over next 5 years)
+            </label>
+          </div>
+        </div>
+
+        <div style="margin-top: 2.5rem; text-align: center;">
+          <button type="submit" class="btn btn-primary" style="width: 100%; max-width: 320px; font-size: 1.1rem; padding: 0.9rem;">
+            <i class="fa-solid fa-calculator"></i> Calculate Cost Estimate
+          </button>
+        </div>
+
+      </form>
+    </div>
+  </div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,16 @@
+# Ignore node_modules folder
+node_modules/
+
+# Ignore Python cache
+__pycache__/
+
+# Ignore environment file
+.env
+
+# Ignore log files
+*.log
+
+# Ignore PDF files and large local reports for Hugging Face compatibility
+*.pdf
+project-report/
+static/images/hero_health.jpg

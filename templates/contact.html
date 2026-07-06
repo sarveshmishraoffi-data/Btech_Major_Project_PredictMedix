@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}PredictMedix - Contact Us{% endblock %}
+
+{% block content %}
+<div class="auth-container" style="max-width: 600px;">
+  <div class="auth-header">
+    <h2>Contact Us</h2>
+    <p>Have questions about PredictMedix or want to collaborate? Send us a message.</p>
+  </div>
+
+  <div class="glass-card">
+    <form action="#" method="POST" onsubmit="event.preventDefault(); alert('Message sent successfully! (Mocked)'); this.reset();">
+      
+      <!-- Name Field -->
+      <div class="form-group">
+        <label for="contact-name" class="form-label">Full Name</label>
+        <div style="position: relative;">
+          <input type="text" id="contact-name" class="form-control" placeholder="John Doe" required style="padding-left: 2.5rem;">
+          <i class="fa-regular fa-user" style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-muted);"></i>
+        </div>
+      </div>
+
+      <!-- Email Field -->
+      <div class="form-group">
+        <label for="contact-email" class="form-label">Email Address</label>
+        <div style="position: relative;">
+          <input type="email" id="contact-email" class="form-control" placeholder="you@example.com" required style="padding-left: 2.5rem;">
+          <i class="fa-regular fa-envelope" style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-muted);"></i>
+        </div>
+      </div>
+
+      <!-- Subject Field -->
+      <div class="form-group">
+        <label for="contact-subject" class="form-label">Subject</label>
+        <div style="position: relative;">
+          <input type="text" id="contact-subject" class="form-control" placeholder="Project Inquiry" required style="padding-left: 2.5rem;">
+          <i class="fa-solid fa-heading" style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-muted);"></i>
+        </div>
+      </div>
+
+      <!-- Message Field -->
+      <div class="form-group">
+        <label for="contact-message" class="form-label">Message</label>
+        <textarea id="contact-message" class="form-control" rows="5" placeholder="Write your message here..." required></textarea>
+      </div>
+
+      <!-- Submit Button -->
+      <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem; font-size: 1.1rem; padding: 0.85rem;">
+        Send Message <i class="fa-regular fa-paper-plane"></i>
+      </button>
+
+    </form>
+  </div>
+</div>
+{% endblock %}

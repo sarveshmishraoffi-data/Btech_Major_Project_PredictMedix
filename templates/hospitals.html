@@ -1,0 +1,299 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container" style="max-width: 1000px; padding: 2rem 1rem;">
+  
+  <div style="text-align: center; margin-bottom: 2.5rem;">
+    <h1 style="font-size: 2.2rem; font-weight: 800; background: linear-gradient(135deg, var(--primary), var(--primary-light)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 0.5rem;">
+      <i class="fa-solid fa-hospital-user"></i> Healthcare & Pharmacy Locator
+    </h1>
+    <p style="color: var(--text-secondary); font-size: 1.1rem; max-width: 600px; margin: 0 auto;">
+      Locate apex medical centers, district govt hospitals, local chemists, and Jan Aushadhi Kendras near your position.
+    </p>
+  </div>
+
+  <!-- Search Type Selector -->
+  <div style="display: flex; justify-content: center; gap: 1rem; margin-bottom: 2rem;">
+    <button id="type-hospital" class="btn btn-primary type-btn active" data-type="hospital" style="padding: 0.8rem 1.5rem; font-size: 1rem; display: flex; align-items: center; gap: 0.5rem; border-radius: 8px;">
+      <i class="fa-solid fa-hospital"></i> Hospitals & Clinics
+    </button>
+    <button id="type-pharmacy" class="btn btn-secondary type-btn" data-type="pharmacy" style="padding: 0.8rem 1.5rem; font-size: 1rem; display: flex; align-items: center; gap: 0.5rem; border-radius: 8px;">
+      <i class="fa-solid fa-prescription-bottle-medical"></i> Medical Stores / Chemists
+    </button>
+  </div>
+
+  <!-- Geolocation Controller -->
+  <div class="glass-card" style="padding: 2rem; margin-bottom: 2.5rem; text-align: center;">
+    <div id="geo-status-icon" style="font-size: 3rem; color: var(--primary); margin-bottom: 1rem;">
+      <i class="fa-solid fa-location-crosshairs fa-spin"></i>
+    </div>
+    <h3 id="geo-status-title" style="margin-bottom: 0.5rem; font-weight: 700;">Location Access Needed</h3>
+    <p id="geo-status-desc" style="color: var(--text-secondary); margin-bottom: 1.5rem; max-width: 450px; margin-left: auto; margin-right: auto;">
+      Allow location permissions in your browser to search nearby facilities in real-time.
+    </p>
+    <button id="btn-locate" class="btn btn-primary" style="padding: 0.8rem 2rem; font-size: 1rem;">
+      <i class="fa-solid fa-location-arrow"></i> Share My Location
+    </button>
+  </div>
+
+  <!-- Hospital Lists Panel (Initially Hidden) -->
+  <div id="hospitals-panel" style="display: none;">
+    
+    <!-- Tab Filters Container -->
+    <div id="filter-tabs-container" style="display: flex; gap: 0.5rem; overflow-x: auto; padding-bottom: 1rem; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border);">
+      <!-- Populated dynamically via JS -->
+    </div>
+
+    <!-- Cards Grid -->
+    <div id="hospitals-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem;">
+      <!-- JavaScript will populate cards here -->
+    </div>
+    
+    <!-- No Results Placeholder -->
+    <div id="no-hospitals" style="display: none; text-align: center; padding: 3rem 1rem;">
+      <i class="fa-solid fa-hospital-slash" style="font-size: 3rem; color: var(--text-secondary); margin-bottom: 1rem;"></i>
+      <h4 style="color: var(--text-primary);">No matching facilities found</h4>
+      <p style="color: var(--text-secondary);">Try selecting a different filter category.</p>
+    </div>
+  </div>
+
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const btnLocate = document.getElementById('btn-locate');
+  const statusIcon = document.getElementById('geo-status-icon');
+  const statusTitle = document.getElementById('geo-status-title');
+  const statusDesc = document.getElementById('geo-status-desc');
+  const hospitalsPanel = document.getElementById('hospitals-panel');
+  const hospitalsGrid = document.getElementById('hospitals-grid');
+  const filterTabsContainer = document.getElementById('filter-tabs-container');
+  const noHospitals = document.getElementById('no-hospitals');
+  
+  const typeBtns = document.querySelectorAll('.type-btn');
+  
+  let rawHospitals = [];
+  let userLat = 28.6139;
+  let userLon = 77.2090;
+  let currentSearchType = 'hospital'; // Default search type
+  let isLocated = false;
+
+  // Search Type Toggle Handler
+  typeBtns.forEach(btn => {
+    btn.addEventListener('click', function() {
+      typeBtns.forEach(b => {
+        b.classList.remove('btn-primary', 'active');
+        b.classList.add('btn-secondary');
+      });
+      btn.classList.remove('btn-secondary');
+      btn.classList.add('btn-primary', 'active');
+      
+      currentSearchType = btn.getAttribute('data-type');
+      
+      if (isLocated) {
+        fetchHospitals(userLat, userLon, currentSearchType);
+      }
+    });
+  });
+  
+  btnLocate.addEventListener('click', function() {
+    statusIcon.innerHTML = '<i class="fa-solid fa-spinner fa-spin-pulse"></i>';
+    statusTitle.textContent = "Acquiring Coordinates...";
+    statusDesc.textContent = "Please confirm the browser geolocation prompt.";
+    btnLocate.disabled = true;
+    
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        // Success callback
+        function(position) {
+          userLat = position.coords.latitude;
+          userLon = position.coords.longitude;
+          isLocated = true;
+          fetchHospitals(userLat, userLon, currentSearchType);
+        },
+        // Error callback
+        function(error) {
+          statusIcon.innerHTML = '<i class="fa-solid fa-circle-exclamation" style="color: var(--danger);"></i>';
+          statusTitle.textContent = "Location Access Denied";
+          statusDesc.textContent = "Could not retrieve coordinates. Falling back to default region search...";
+          setTimeout(() => {
+            isLocated = true;
+            fetchHospitals(userLat, userLon, currentSearchType); // Fallback coordinates
+          }, 2000);
+        },
+        { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+      );
+    } else {
+      statusIcon.innerHTML = '<i class="fa-solid fa-triangle-exclamation" style="color: var(--warning);"></i>';
+      statusTitle.textContent = "Not Supported";
+      statusDesc.textContent = "Your browser does not support geolocation. Searching defaults...";
+      isLocated = true;
+      fetchHospitals(userLat, userLon, currentSearchType);
+    }
+  });
+
+  function fetchHospitals(lat, lon, searchType) {
+    statusTitle.textContent = "Fetching Nearby Centers...";
+    statusDesc.textContent = `Connecting to real-time maps databases (Overpass API) searching for ${searchType}s...`;
+    
+    fetch(`/api/nearby_hospitals?lat=${lat}&lon=${lon}&type=${searchType}`)
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then(res => {
+        if (res.status === 'success') {
+          rawHospitals = res.data;
+          
+          // Re-generate tabs based on type
+          buildTabs(searchType);
+          renderHospitals('all');
+          
+          // Animate and switch panels
+          statusIcon.innerHTML = '<i class="fa-solid fa-circle-check" style="color: var(--success);"></i>';
+          statusTitle.textContent = "Facilities Located!";
+          statusDesc.textContent = `Found ${rawHospitals.length} nearby ${searchType === 'hospital' ? 'medical centers' : 'chemist shops'} near your position.`;
+          btnLocate.style.display = 'none';
+          
+          hospitalsPanel.style.display = 'block';
+          hospitalsPanel.scrollIntoView({ behavior: 'smooth' });
+        } else {
+          showError("Database failed to respond. Reload and try again.");
+        }
+      })
+      .catch(err => {
+        console.error("Fetch error details:", err);
+        showError(`Failed to fetch coordinates. (${err.message})`);
+      });
+  }
+
+  function showError(msg) {
+    statusIcon.innerHTML = '<i class="fa-solid fa-circle-xmark" style="color: var(--danger);"></i>';
+    statusTitle.textContent = "Connection Timeout";
+    statusDesc.textContent = msg;
+    btnLocate.disabled = false;
+  }
+
+  function buildTabs(searchType) {
+    filterTabsContainer.innerHTML = '';
+    
+    let tabs = [];
+    if (searchType === 'hospital') {
+      tabs = [
+        { label: "All Facilities", filter: "all", style: "" },
+        { label: "AIIMS / Apex Govt", filter: "aiims", style: "background: #EF4444;" },
+        { label: "District/Block Govt", filter: "govt", style: "background: #10B981;" },
+        { label: "Private Specialty", filter: "private", style: "background: #3B82F6;" },
+        { label: "Charitable / Free", filter: "charitable", style: "background: #F59E0B;" }
+      ];
+    } else {
+      tabs = [
+        { label: "All Chemists", filter: "all", style: "" },
+        { label: "Jan Aushadhi (Govt)", filter: "aushadhi", style: "background: #10B981;" },
+        { label: "Chain Pharmacy", filter: "chain", style: "background: #3B82F6;" },
+        { label: "Local Chemist", filter: "local", style: "background: #F59E0B;" }
+      ];
+    }
+    
+    tabs.forEach((tab, index) => {
+      const btn = document.createElement('button');
+      btn.className = `btn btn-secondary filter-tab ${index === 0 ? 'active' : ''}`;
+      btn.setAttribute('data-filter', tab.filter);
+      btn.style.whiteSpace = 'nowrap';
+      
+      let badgeHtml = '';
+      if (tab.style) {
+        badgeHtml = `<span style="margin-right: 5px; width: 8px; height: 8px; display: inline-block; border-radius: 50%; ${tab.style}"></span>`;
+      }
+      
+      btn.innerHTML = badgeHtml + tab.label;
+      
+      btn.addEventListener('click', function() {
+        document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+        btn.classList.add('active');
+        renderHospitals(tab.filter);
+      });
+      
+      filterTabsContainer.appendChild(btn);
+    });
+  }
+
+  function renderHospitals(filter) {
+    hospitalsGrid.innerHTML = '';
+    let filtered = rawHospitals;
+    if (filter !== 'all') {
+      filtered = rawHospitals.filter(h => h.cat_id === filter);
+    }
+    
+    if (filtered.length === 0) {
+      noHospitals.style.display = 'block';
+      hospitalsGrid.style.display = 'none';
+      return;
+    }
+    
+    noHospitals.style.display = 'none';
+    hospitalsGrid.style.display = 'grid';
+    
+    filtered.forEach(h => {
+      // Create google maps URL
+      let mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(h.name + " " + (h.address || ""))}`;
+      if (h.lat && h.lon) {
+        mapUrl = `https://www.google.com/maps/search/?api=1&query=${h.lat},${h.lon}`;
+      }
+      
+      const card = document.createElement('div');
+      card.className = 'glass-card hospital-card';
+      card.style.padding = '1.5rem';
+      card.style.display = 'flex';
+      card.style.flexDirection = 'column';
+      card.style.justifyContent = 'space-between';
+      card.style.transition = 'transform 0.2s, box-shadow 0.2s';
+      card.style.position = 'relative';
+      card.style.overflow = 'hidden';
+      
+      // Hover animation helper CSS
+      card.onmouseover = () => { card.style.transform = 'translateY(-4px)'; card.style.boxShadow = '0 12px 20px rgba(0,0,0,0.1)'; };
+      card.onmouseout = () => { card.style.transform = 'translateY(0)'; card.style.boxShadow = 'none'; };
+
+      let catBadgeColor = '';
+      if (h.cat_id === 'aiims') catBadgeColor = 'background: #EF4444; color: white;';
+      else if (h.cat_id === 'govt' || h.cat_id === 'aushadhi') catBadgeColor = 'background: #10B981; color: white;';
+      else if (h.cat_id === 'charitable' || h.cat_id === 'local') catBadgeColor = 'background: #F59E0B; color: white;';
+      else catBadgeColor = 'background: #3B82F6; color: white;';
+
+      card.innerHTML = `
+        <div>
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.8rem; gap: 0.5rem;">
+            <span style="font-size: 0.75rem; font-weight: 700; padding: 0.25rem 0.6rem; border-radius: 20px; ${catBadgeColor}">
+              ${h.category}
+            </span>
+            <span style="font-size: 0.85rem; font-weight: 700; color: var(--primary); white-space: nowrap;">
+              <i class="fa-solid fa-route"></i> ${h.distance} km
+            </span>
+          </div>
+          <h4 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 0.5rem; line-height: 1.3; color: var(--text-primary);">
+            ${h.name}
+          </h4>
+          <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 1rem; display: flex; gap: 0.4rem; align-items: flex-start;">
+            <i class="fa-solid fa-map-pin" style="color: var(--primary); margin-top: 3px;"></i>
+            <span>${h.address}</span>
+          </p>
+          ${h.transit ? `
+          <div style="margin-bottom: 1.2rem; padding: 0.5rem; background: rgba(59,130,246,0.05); border-radius: 6px; border-left: 3px solid var(--primary); text-align: left; font-size: 0.8rem; color: var(--text-secondary); display: flex; gap: 0.4rem; align-items: center;">
+            <i class="fa-solid fa-bus" style="color: var(--primary);"></i>
+            <span><strong>Transit:</strong> ${h.transit}</span>
+          </div>
+          ` : ''}
+        </div>
+        <a href="${mapUrl}" target="_blank" class="btn btn-secondary" style="width: 100%; text-align: center; font-size: 0.9rem; padding: 0.6rem; display: flex; align-items: center; justify-content: center; gap: 0.4rem;">
+          <i class="fa-solid fa-diamond-turn-right" style="color: var(--primary);"></i> Get Directions
+        </a>
+      `;
+      hospitalsGrid.appendChild(card);
+    });
+  }
+});
+</script>
+{% endblock %}

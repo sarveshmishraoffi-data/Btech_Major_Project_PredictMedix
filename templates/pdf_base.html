@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Medical Cost Prediction Report</title>
+  <style>
+    @page {
+      size: letter;
+      margin: 0.8in;
+    }
+    body {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      color: #2D3748;
+      line-height: 1.5;
+      font-size: 10pt;
+    }
+    .header {
+      border-bottom: 2px solid #4A5568;
+      padding-bottom: 10px;
+      margin-bottom: 20px;
+    }
+    .header table {
+      width: 100%;
+    }
+    .brand {
+      font-size: 18pt;
+      font-weight: bold;
+      color: #4F46E5;
+    }
+    .report-title {
+      font-size: 14pt;
+      text-align: right;
+      color: #4A5568;
+      font-weight: bold;
+    }
+    .section-title {
+      font-size: 12pt;
+      font-weight: bold;
+      color: #1A202C;
+      border-bottom: 1px solid #E2E8F0;
+      padding-bottom: 5px;
+      margin-top: 25px;
+      margin-bottom: 12px;
+    }
+    .cost-card {
+      background-color: #F0FDF4;
+      border: 1px solid #BBF7D0;
+      padding: 15px;
+      border-radius: 8px;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .cost-value {
+      font-size: 24pt;
+      font-weight: bold;
+      color: #16A34A;
+      margin-top: 5px;
+    }
+    .grid-table {
+      width: 100%;
+      margin-bottom: 15px;
+    }
+    .grid-table td {
+      padding: 6px;
+      vertical-align: top;
+    }
+    .label {
+      font-weight: bold;
+      color: #4A5568;
+    }
+    .value {
+      color: #2D3748;
+    }
+    .list-item {
+      margin-bottom: 6px;
+      padding-left: 10px;
+    }
+    .table-data {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+    .table-data th, .table-data td {
+      border: 1px solid #E2E8F0;
+      padding: 8px;
+      text-align: left;
+    }
+    .table-data th {
+      background-color: #F7FAFC;
+      font-weight: bold;
+      color: #4A5568;
+    }
+    .footer {
+      margin-top: 40px;
+      border-top: 1px solid #E2E8F0;
+      padding-top: 10px;
+      font-size: 8pt;
+      color: #718096;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  {% block content %}{% endblock %}
+</body>
+</html>

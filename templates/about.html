@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block title %}PredictMedix - About Us{% endblock %}
+
+{% block content %}
+<div class="predictor-header">
+  <h2>About PredictMedix</h2>
+  <p style="color: var(--text-secondary);">An Explainable Machine Learning framework for medical cost prediction.</p>
+</div>
+
+<div class="about-grid">
+  <!-- Left Card: Project Description -->
+  <div class="glass-card">
+    <h3 style="font-size: 1.5rem; font-weight: 750; margin-bottom: 1rem; color: var(--primary);">
+      Project Overview
+    </h3>
+    <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">
+      Rising healthcare expenses make accurate medical cost prediction important for both individuals and insurance providers. PredictMedix applies data-driven machine learning models to estimate medical insurance charges using structured lifestyle and demographic datasets.
+    </p>
+    <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">
+      By feeding lifestyle features like Age, BMI, and Smoking status into trained regression models, the platform predicts the expected charges instantly.
+    </p>
+    
+    <h4 style="font-weight: 650; margin-top: 2rem;">Regression Models Implemented</h4>
+    <ul style="margin-left: 1.5rem; margin-top: 0.5rem; color: var(--text-secondary); display: flex; flex-direction: column; gap: 0.25rem;">
+      <li>Linear Regression (Baseline)</li>
+      <li>Decision Tree Regressor</li>
+      <li>Random Forest Regressor (High Performance)</li>
+      <li>Gradient Boosting / XGBoost Regressor</li>
+      <li>Support Vector Regression (SVR)</li>
+    </ul>
+  </div>
+
+  <!-- Right Card: Tech Stack & Team -->
+  <div class="glass-card" style="display: flex; flex-direction: column; justify-content: space-between;">
+    <div>
+      <h3 style="font-size: 1.5rem; font-weight: 750; margin-bottom: 1rem; color: var(--primary);">
+        Technology Stack
+      </h3>
+      <p style="color: var(--text-secondary);">
+        The framework is built using modern libraries in the Python machine learning ecosystem:
+      </p>
+      
+      <div class="tech-stack-list">
+        <span class="tech-tag">Python 3</span>
+        <span class="tech-tag">Flask (Web Framework)</span>
+        <span class="tech-tag">XGBoost & Scikit-Learn</span>
+        <span class="tech-tag">SHAP (Explainable AI)</span>
+        <span class="tech-tag">MongoDB (User Auth)</span>
+        <span class="tech-tag">xhtml2pdf (Report Export)</span>
+        <span class="tech-tag">Pandas & NumPy</span>
+      </div>
+    </div>
+
+    <div>
+      <h3 style="font-size: 1.5rem; font-weight: 750; margin-top: 2rem; margin-bottom: 1rem; color: var(--primary);">
+        Development Team
+      </h3>
+      <p style="color: var(--text-secondary);">
+        Developed as a B.Tech Computer Science and Engineering Major Project.
+      </p>
+      
+      <div class="team-list">
+        <div class="team-member">
+          <div class="team-member-avatar">S</div>
+          <div class="team-member-info">
+            <h4>Lead Developer</h4>
+            <p>Machine Learning & Preprocessing</p>
+          </div>
+          <a href="{{ url_for('download_resume', filename='resume_lead.pdf') }}" class="team-resume-link">
+            <i class="fa-solid fa-download"></i> Resume
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

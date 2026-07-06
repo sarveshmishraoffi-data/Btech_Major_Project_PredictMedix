@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}PredictMedix - Medical Cost Predictor{% endblock %}</title>
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Custom CSS stylesheet -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  
+  <!-- Inline theme initializer to avoid layout flash -->
+  <script>
+    (function () {
+      const savedTheme = localStorage.getItem("theme") || "light";
+      document.documentElement.setAttribute("data-theme", savedTheme);
+    })();
+  </script>
+  {% block head %}{% endblock %}
+</head>
+<body>
+  <div class="app-container">
+    <!-- Navbar Header -->
+    <header>
+      <nav class="navbar" id="main-navbar">
+        <a href="{{ url_for('home') }}" class="nav-brand">
+          <i class="fa-solid fa-heart-pulse"></i> PredictMedix
+        </a>
+        <ul class="nav-menu">
+          <li><a href="{{ url_for('home') }}" class="nav-link {% if request.path == '/' %}active{% endif %}">Home</a></li>
+          {% if current_user.is_authenticated %}
+            <li><a href="{{ url_for('hospitals') }}" class="nav-link {% if request.path == '/hospitals' %}active{% endif %}">Find Hospitals</a></li>
+          {% endif %}
+          <li><a href="{{ url_for('about') }}" class="nav-link {% if request.path == '/about' %}active{% endif %}">About</a></li>
+          <li><a href="{{ url_for('contact') }}" class="nav-link {% if request.path == '/contact' %}active{% endif %}">Contact</a></li>
+          
+          {% if current_user.is_authenticated %}
+            <li><span class="nav-link">Hello, <strong>{{ current_user.name }}</strong></span></li>
+            <li><a href="{{ url_for('logout') }}" class="nav-link btn nav-btn btn-danger">Logout</a></li>
+          {% else %}
+            <li><a href="{{ url_for('login') }}" class="nav-link {% if request.path == '/login' %}active{% endif %}">Login</a></li>
+            <li><a href="{{ url_for('signup') }}" class="nav-link btn nav-btn">Sign Up</a></li>
+          {% endif %}
+          
+          <!-- Theme Toggle -->
+          <li>
+            <button id="theme-toggle" class="theme-toggle-btn" aria-label="Toggle light/dark theme">
+              <i class="fa-solid fa-moon moon-icon"></i>
+              <i class="fa-solid fa-sun sun-icon"></i>
+            </button>
+          </li>
+        </ul>
+      </nav>
+    </header>
+
+    <!-- Flash message alerts -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="flash-container">
+          {% for category, message in messages %}
+            <div class="flash-message {{ category }}">
+              <span><i class="fa-solid {% if category == 'success' %}fa-circle-check{% elif category == 'danger' %}fa-circle-exclamation{% else %}fa-circle-info{% endif %}"></i> {{ message }}</span>
+              <button class="flash-close-btn" aria-label="Dismiss alert">&times;</button>
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    <!-- Main Content wrapper -->
+    <main class="main-content">
+      {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer>
+      <p>&copy; {{ datetime.datetime.now().year if datetime else 2026 }} PredictMedix. Developed as a B.Tech Major Project.</p>
+      <p style="margin-top: 0.5rem; font-size: 0.8rem; opacity: 0.7;">Powered by Machine Learning & Explainable AI (SHAP)</p>
+    </footer>
+  </div>
+
+  <!-- Custom JavaScript File -->
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

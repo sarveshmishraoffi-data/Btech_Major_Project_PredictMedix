@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.git/
+.gitignore
+.gemini/
+resumes/
+user_predictions.csv
+scratch/
+.env
+venv/
+env/
+.pytest_cache/
