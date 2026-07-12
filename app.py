@@ -24,6 +24,14 @@ load_dotenv()
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY', 'your-secret-key')
 
+# Configure SameSite and Secure cookies to allow sessions to persist inside Hugging Face Space iframes
+app.config.update(
+    SESSION_COOKIE_SAMESITE='None',
+    SESSION_COOKIE_SECURE=True,
+    REMEMBER_COOKIE_SAMESITE='None',
+    REMEMBER_COOKIE_SECURE=True
+)
+
 # Register custom fromjson filter in Jinja
 import json
 app.jinja_env.filters['fromjson'] = json.loads

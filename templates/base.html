@@ -64,34 +64,41 @@
               <span><i class="fa-solid {% if category == 'success' %}fa-circle-check{% elif category == 'danger' %}fa-circle-exclamation{% else %}fa-circle-info{% endif %}"></i> {{ message }}</span>
               <button class="flash-close-btn" aria-label="Dismiss alert">&times;</button>
             </div>
-            
-            <!-- Browser Alert Popups for Signup and Login Feedback -->
-            <script>
-              (function() {
-                const msg = {{ message | tojson }};
-                const cat = "{{ category }}";
-                const path = "{{ request.path }}";
+          {% endfor %}
+        </div>
+
+        <!-- Script-level Alert Popups (DOM-based, safe and isolated from Jinja variables) -->
+        <script>
+          document.addEventListener('DOMContentLoaded', function() {
+            const flashMessages = document.querySelectorAll('.flash-message');
+            flashMessages.forEach(function(flash) {
+              const msgSpan = flash.querySelector('span');
+              if (msgSpan) {
+                // Get message text and clean off the icon leading symbols
+                const msg = msgSpan.innerText || msgSpan.textContent;
+                const cleanMsg = msg.trim();
+                const cat = flash.classList.contains('success') ? 'success' : (flash.classList.contains('danger') ? 'danger' : 'info');
+                const path = window.location.pathname;
                 
                 if (path === '/signup') {
                   if (cat === 'success') {
-                    alert("Signup Successful!\n\n" + msg);
-                  } else if (cat === 'danger' || cat === 'error') {
-                    alert("Signup Unsuccessful!\n\nReason: " + msg);
+                    alert("Signup Successful!\n\n" + cleanMsg);
+                  } else if (cat === 'danger') {
+                    alert("Signup Unsuccessful!\n\nReason: " + cleanMsg);
                   }
                 } else if (path === '/login') {
-                  if (cat === 'danger' || cat === 'error') {
-                    alert("Login Unsuccessful!\n\nReason: " + msg);
+                  if (cat === 'danger') {
+                    alert("Login Unsuccessful!\n\nReason: " + cleanMsg);
                   }
                 } else {
-                  // Fallback for homepage redirects
-                  if (msg.toLowerCase().includes('signup') || msg.toLowerCase().includes('success')) {
-                    alert("Signup Successful!\n\n" + msg);
+                  if (cleanMsg.toLowerCase().includes('signup') || cleanMsg.toLowerCase().includes('success')) {
+                    alert("Signup Successful!\n\n" + cleanMsg);
                   }
                 }
-              })();
-            </script>
-          {% endfor %}
-        </div>
+              }
+            });
+          });
+        </script>
       {% endif %}
     {% endwith %}
 
