@@ -249,9 +249,29 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // Stop form submission if warnings are active
   document.querySelector('.signup-form').addEventListener('submit', function(e) {
+    // Sanitize mobile format: strip country code, spaces, or leading zeros
+    let rawMobile = mobileInput.value.trim();
+    let cleanMobile = rawMobile.replace(/\D/g, ''); // extract digits
+    if (cleanMobile.length > 10) {
+      if (cleanMobile.startsWith('91')) {
+        cleanMobile = cleanMobile.slice(2);
+      } else if (cleanMobile.startsWith('0')) {
+        cleanMobile = cleanMobile.slice(1);
+      }
+    }
+    // Limit to last 10 digits if still longer
+    if (cleanMobile.length > 10) {
+      cleanMobile = cleanMobile.slice(-10);
+    }
+    
+    // Automatically set value to cleaned 10-digit number
+    if (cleanMobile.length === 10) {
+      mobileInput.value = cleanMobile;
+    }
+
     const pVal = passwordInput.value;
     const emailVal = emailInput.value.trim();
-    const mobileVal = mobileInput.value.trim();
+    const mobileVal = mobileInput.value; // updated clean value
     
     const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailVal);
     const mobileOk = /^[6-9]\d{9}$/.test(mobileVal);
@@ -260,7 +280,14 @@ document.addEventListener('DOMContentLoaded', function() {
     
     if (!emailOk || !mobileOk || !pwOk || !confirmOk) {
       e.preventDefault();
-      alert('Please resolve all validation errors in the fields before signing up.');
+      
+      let errors = "Please fix the following validation errors before signing up:\n\n";
+      if (!emailOk) errors += "• Email format is invalid (must include '@' and a domain name)\n";
+      if (!mobileOk) errors += "• Indian mobile number must be exactly 10 digits starting with 6-9 (spaces and country codes are cleaned automatically)\n";
+      if (!pwOk) errors += "• Password must meet all 5 requirements listed in the checklist below the password field\n";
+      if (!confirmOk) errors += "• Confirm password does not match the password\n";
+      
+      alert(errors);
     }
   });
 });
