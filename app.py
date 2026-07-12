@@ -371,8 +371,8 @@ def login():
 @login_required
 def logout():
     logout_user()
-    # flash('logout successfully','success')
-    return redirect(url_for('home'))
+    flash('You have been logged out successfully.', 'info')
+    return redirect(url_for('login'))
 
 
 # forgot-password==========>
