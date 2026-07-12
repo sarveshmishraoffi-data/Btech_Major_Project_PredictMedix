@@ -3,45 +3,72 @@
 {% block title %}PredictMedix - Sign Up{% endblock %}
 
 {% block content %}
-<div class="auth-container">
+<div class="auth-container" style="max-width: 480px; margin: 0 auto; padding: 2rem 1rem;">
   <div class="auth-header">
     <h2>Create Account</h2>
     <p>Sign up to start estimating medical expenses</p>
   </div>
 
-  <div class="glass-card">
+  <div class="glass-card" style="padding: 2rem;">
     <form action="{{ url_for('signup') }}" method="POST" class="signup-form">
       
-      <!-- Full Name Field -->
-      <div class="form-group">
-        <label for="name" class="form-label">Full Name</label>
-        <div style="position: relative;">
-          <input type="text" id="name" name="name" class="form-control" placeholder="John Doe" required style="padding-left: 2.5rem;">
-          <i class="fa-regular fa-user" style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-muted);"></i>
+      <!-- Name Fields (Responsive Grid Layout) -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 0.8rem; margin-bottom: 1rem;">
+        
+        <!-- First Name -->
+        <div class="form-group" style="margin-bottom: 0;">
+          <label for="first_name" class="form-label" style="font-size: 0.8rem; font-weight: 600;">First Name *</label>
+          <div style="position: relative;">
+            <input type="text" id="first_name" name="first_name" class="form-control" placeholder="John" required style="padding-left: 2rem; font-size: 0.85rem;">
+            <i class="fa-regular fa-user" style="position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 0.8rem;"></i>
+          </div>
+        </div>
+        
+        <!-- Middle Name -->
+        <div class="form-group" style="margin-bottom: 0;">
+          <label for="middle_name" class="form-label" style="font-size: 0.8rem; font-weight: 600;">Middle Name</label>
+          <div style="position: relative;">
+            <input type="text" id="middle_name" name="middle_name" class="form-control" placeholder="M." style="padding-left: 2rem; font-size: 0.85rem;">
+            <i class="fa-regular fa-user" style="position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 0.8rem;"></i>
+          </div>
+        </div>
+        
+        <!-- Last Name -->
+        <div class="form-group" style="margin-bottom: 0;">
+          <label for="last_name" class="form-label" style="font-size: 0.8rem; font-weight: 600;">Last Name</label>
+          <div style="position: relative;">
+            <input type="text" id="last_name" name="last_name" class="form-control" placeholder="Doe" style="padding-left: 2rem; font-size: 0.85rem;">
+            <i class="fa-regular fa-user" style="position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 0.8rem;"></i>
+          </div>
         </div>
       </div>
 
       <!-- Email Address Field -->
-      <div class="form-group">
+      <div class="form-group" style="margin-bottom: 1rem;">
         <label for="email" class="form-label">Email Address</label>
         <div style="position: relative;">
           <input type="email" id="email" name="email" class="form-control" placeholder="john@example.com" required style="padding-left: 2.5rem;">
           <i class="fa-regular fa-envelope" style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-muted);"></i>
         </div>
+        <div id="email-warning" style="font-size: 0.75rem; color: var(--danger); margin-top: 0.3rem; display: none; text-align: left;">
+          <i class="fa-solid fa-circle-exclamation"></i> Invalid email format (must include '@' and a domain).
+        </div>
       </div>
 
       <!-- Mobile Number Field -->
-      <div class="form-group">
+      <div class="form-group" style="margin-bottom: 1rem;">
         <label for="mobile" class="form-label">Mobile Number (India)</label>
         <div style="position: relative;">
-          <input type="tel" id="mobile" name="mobile" class="form-control" placeholder="9876543210" pattern="^[6-9]\d{9}$" required style="padding-left: 2.5rem;" title="10-digit Indian mobile number starting with 6-9">
+          <input type="tel" id="mobile" name="mobile" class="form-control" placeholder="9876543210" required style="padding-left: 2.5rem;">
           <i class="fa-solid fa-mobile-screen-button" style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-muted);"></i>
         </div>
-        <small style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem; display: block;">Must be a 10-digit number starting with 6, 7, 8, or 9.</small>
+        <div id="mobile-warning" style="font-size: 0.75rem; color: var(--danger); margin-top: 0.3rem; display: none; text-align: left;">
+          <i class="fa-solid fa-circle-exclamation"></i> Must be exactly 10 digits starting with 6, 7, 8, or 9.
+        </div>
       </div>
 
       <!-- Password Field -->
-      <div class="form-group">
+      <div class="form-group" style="margin-bottom: 1rem;">
         <label for="password" class="form-label">Password</label>
         <div style="position: relative;">
           <input type="password" id="password" name="password" class="form-control" placeholder="••••••••" required style="padding-left: 2.5rem; padding-right: 2.5rem;">
@@ -50,10 +77,32 @@
             <i class="fa-regular fa-eye"></i>
           </button>
         </div>
+        
+        <!-- Live Password Requirements Tracker -->
+        <div id="password-checklist" style="margin-top: 0.5rem; padding: 0.6rem 0.8rem; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 8px; font-size: 0.75rem; text-align: left;">
+          <div style="font-weight: 700; margin-bottom: 0.3rem; color: var(--text-secondary);">Password Requirements:</div>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.3rem;">
+            <span id="req-length" style="color: var(--text-muted); display: flex; align-items: center; gap: 0.3rem;">
+              <i class="fa-regular fa-circle-xmark"></i> Min. 7 characters
+            </span>
+            <span id="req-upper" style="color: var(--text-muted); display: flex; align-items: center; gap: 0.3rem;">
+              <i class="fa-regular fa-circle-xmark"></i> 1 Uppercase (A-Z)
+            </span>
+            <span id="req-lower" style="color: var(--text-muted); display: flex; align-items: center; gap: 0.3rem;">
+              <i class="fa-regular fa-circle-xmark"></i> 1 Lowercase (a-z)
+            </span>
+            <span id="req-number" style="color: var(--text-muted); display: flex; align-items: center; gap: 0.3rem;">
+              <i class="fa-regular fa-circle-xmark"></i> 1 Number (0-9)
+            </span>
+            <span id="req-special" style="color: var(--text-muted); display: flex; align-items: center; gap: 0.3rem;">
+              <i class="fa-regular fa-circle-xmark"></i> 1 Special character
+            </span>
+          </div>
+        </div>
       </div>
 
       <!-- Confirm Password Field -->
-      <div class="form-group">
+      <div class="form-group" style="margin-bottom: 1.5rem;">
         <label for="confirm_password" class="form-label">Confirm Password</label>
         <div style="position: relative;">
           <input type="password" id="confirm_password" name="confirm_password" class="form-control" placeholder="••••••••" required style="padding-left: 2.5rem; padding-right: 2.5rem;">
@@ -62,10 +111,13 @@
             <i class="fa-regular fa-eye"></i>
           </button>
         </div>
+        <div id="confirm-warning" style="font-size: 0.75rem; color: var(--danger); margin-top: 0.3rem; display: none; text-align: left;">
+          <i class="fa-solid fa-circle-exclamation"></i> Passwords do not match.
+        </div>
       </div>
 
       <!-- Submit Button -->
-      <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem; font-size: 1rem; padding: 0.85rem;">
+      <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 0.5rem; font-size: 1rem; padding: 0.85rem;">
         Sign Up <i class="fa-solid fa-user-plus"></i>
       </button>
 
@@ -76,4 +128,141 @@
     Already have an account? <a href="{{ url_for('login') }}">Sign In</a>
   </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Fields
+  const firstInput = document.getElementById('first_name');
+  const emailInput = document.getElementById('email');
+  const emailWarn = document.getElementById('email-warning');
+  const mobileInput = document.getElementById('mobile');
+  const mobileWarn = document.getElementById('mobile-warning');
+  const passwordInput = document.getElementById('password');
+  const confirmInput = document.getElementById('confirm_password');
+  const confirmWarn = document.getElementById('confirm-warning');
+  
+  // Password Requirement spans
+  const reqLength = document.getElementById('req-length');
+  const reqUpper = document.getElementById('req-upper');
+  const reqLower = document.getElementById('req-lower');
+  const reqNumber = document.getElementById('req-number');
+  const reqSpecial = document.getElementById('req-special');
+  
+  // Toggle Eye Buttons
+  const togglePW = document.getElementById('toggle-password');
+  const toggleConfirm = document.getElementById('toggle-confirm-password');
+  
+  if (togglePW) {
+    togglePW.addEventListener('click', function() {
+      const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+      passwordInput.setAttribute('type', type);
+      this.querySelector('i').classList.toggle('fa-eye');
+      this.querySelector('i').classList.toggle('fa-eye-slash');
+    });
+  }
+  
+  if (toggleConfirm) {
+    toggleConfirm.addEventListener('click', function() {
+      const type = confirmInput.getAttribute('type') === 'password' ? 'text' : 'password';
+      confirmInput.setAttribute('type', type);
+      this.querySelector('i').classList.toggle('fa-eye');
+      this.querySelector('i').classList.toggle('fa-eye-slash');
+    });
+  }
+
+  // Real-time Email validation check
+  emailInput.addEventListener('input', function() {
+    const val = this.value.trim();
+    if (val === '') {
+      emailWarn.style.display = 'none';
+      return;
+    }
+    const pattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!pattern.test(val)) {
+      emailWarn.style.display = 'block';
+    } else {
+      emailWarn.style.display = 'none';
+    }
+  });
+
+  // Real-time Indian Mobile validation check
+  mobileInput.addEventListener('input', function() {
+    const val = this.value.trim();
+    if (val === '') {
+      mobileWarn.style.display = 'none';
+      return;
+    }
+    const pattern = /^[6-9]\d{9}$/;
+    if (!pattern.test(val)) {
+      mobileWarn.style.display = 'block';
+    } else {
+      mobileWarn.style.display = 'none';
+    }
+  });
+
+  // Helper to toggle checkmark style
+  function toggleStatus(element, isOk) {
+    const icon = element.querySelector('i');
+    if (isOk) {
+      element.style.color = '#10B981'; // success green
+      icon.className = 'fa-solid fa-circle-check';
+    } else {
+      element.style.color = 'var(--text-muted)';
+      icon.className = 'fa-regular fa-circle-xmark';
+    }
+  }
+
+  // Real-time Password checklist validation
+  passwordInput.addEventListener('input', function() {
+    const val = this.value;
+    
+    const isLen = val.length >= 7;
+    const isUpper = /[A-Z]/.test(val);
+    const isLower = /[a-z]/.test(val);
+    const isNum = /[0-9]/.test(val);
+    const isSpec = /[^A-Za-z0-9]/.test(val);
+    
+    toggleStatus(reqLength, isLen);
+    toggleStatus(reqUpper, isUpper);
+    toggleStatus(reqLower, isLower);
+    toggleStatus(reqNumber, isNum);
+    toggleStatus(reqSpecial, isSpec);
+    
+    if (confirmInput.value !== '') {
+      validateConfirm();
+    }
+  });
+
+  function validateConfirm() {
+    if (confirmInput.value === '') {
+      confirmWarn.style.display = 'none';
+      return;
+    }
+    if (confirmInput.value !== passwordInput.value) {
+      confirmWarn.style.display = 'block';
+    } else {
+      confirmWarn.style.display = 'none';
+    }
+  }
+
+  confirmInput.addEventListener('input', validateConfirm);
+
+  // Stop form submission if warnings are active
+  document.querySelector('.signup-form').addEventListener('submit', function(e) {
+    const pVal = passwordInput.value;
+    const emailVal = emailInput.value.trim();
+    const mobileVal = mobileInput.value.trim();
+    
+    const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailVal);
+    const mobileOk = /^[6-9]\d{9}$/.test(mobileVal);
+    const pwOk = pVal.length >= 7 && /[A-Z]/.test(pVal) && /[a-z]/.test(pVal) && /[0-9]/.test(pVal) && /[^A-Za-z0-9]/.test(pVal);
+    const confirmOk = confirmInput.value === pVal;
+    
+    if (!emailOk || !mobileOk || !pwOk || !confirmOk) {
+      e.preventDefault();
+      alert('Please resolve all validation errors in the fields before signing up.');
+    }
+  });
+});
+</script>
 {% endblock %}

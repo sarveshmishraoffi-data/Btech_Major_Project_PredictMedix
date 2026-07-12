@@ -276,14 +276,25 @@ def signup():
         return redirect(url_for('home'))
 
     if request.method == 'POST':
-        name = request.form['name']
-        email = request.form['email']
-        mobile = request.form['mobile']
-        password = request.form['password']
-        confirm = request.form['confirm_password']
+        first_name = request.form.get('first_name', '').strip()
+        middle_name = request.form.get('middle_name', '').strip()
+        last_name = request.form.get('last_name', '').strip()
+        
+        # Construct full name for database compatibility
+        name_parts = [first_name]
+        if middle_name:
+            name_parts.append(middle_name)
+        if last_name:
+            name_parts.append(last_name)
+        name = " ".join(name_parts)
 
-        if not all([name, email, mobile, password, confirm]):
-            flash('All fields required!', 'danger')
+        email = request.form.get('email', '').strip()
+        mobile = request.form.get('mobile', '').strip()
+        password = request.form.get('password', '')
+        confirm = request.form.get('confirm_password', '')
+
+        if not all([first_name, email, mobile, password, confirm]):
+            flash('All mandatory fields are required!', 'danger')
             return redirect(url_for('signup'))
 
         if password != confirm:
